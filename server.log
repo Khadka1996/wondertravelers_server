@@ -1,0 +1,105 @@
+
+> server@1.0.0 start:dev
+> NODE_ENV=development node src/server.js
+
+[32mINFO[39m [2026-03-10 01:31:00.754 +0545]: [36mLogger initialized → DEVELOPMENT mode (pretty console output)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+2026-03-09T19:46:01.876Z express:application set "x-powered-by" to true
+2026-03-09T19:46:01.877Z express:application set "etag" to 'weak'
+2026-03-09T19:46:01.878Z express:application set "etag fn" to [Function: generateETag]
+2026-03-09T19:46:01.879Z express:application set "env" to 'development'
+2026-03-09T19:46:01.879Z express:application set "query parser" to 'simple'
+2026-03-09T19:46:01.879Z express:application set "query parser fn" to [Function: parse]
+2026-03-09T19:46:01.879Z express:application set "subdomain offset" to 2
+2026-03-09T19:46:01.879Z express:application set "trust proxy" to false
+2026-03-09T19:46:01.880Z express:application set "trust proxy fn" to [Function: trustNone]
+2026-03-09T19:46:01.880Z express:application booting in development mode
+2026-03-09T19:46:01.880Z express:application set "view" to [Function: View]
+2026-03-09T19:46:01.881Z express:application set "views" to '/home/xettry/Desktop/Subash_thapa/server/views'
+2026-03-09T19:46:01.881Z express:application set "jsonp callback name" to 'callback'
+2026-03-09T19:46:01.881Z express:application set "trust proxy" to 0
+2026-03-09T19:46:01.881Z express:application set "trust proxy fn" to [Function (anonymous)]
+[32mINFO[39m [2026-03-10 01:31:02.048 +0545]: [36m✅ Blog Scheduler initialized - runs every 5 minutes[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[dotenv@17.2.4] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[32mINFO[39m [2026-03-10 01:31:02.104 +0545]: [36mCluster mode disabled (development or explicitly disabled)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.107 +0545]: [36mGeoIP module loaded successfully[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.358 +0545]: [36mRedis → connected[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.359 +0545]: [36mRedis client connected in app.js[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.360 +0545]: [36mRedis → connected[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.360 +0545]: [36mRedis → initialized before DB connection[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.361 +0545]: [36m🗄️  MongoDB pool size - Min: 4, Max: 25[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.401 +0545]: [36mMongoose → DB connected[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.410 +0545]: [36m✅ MongoDB connected successfully[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.411 +0545]: [36m📊 Connection pool: 4-25 connections[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+(node:162272) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"slug":1} for model "Blog". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:162272) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"slug":1} for model "Photo". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+[32mINFO[39m [2026-03-10 01:31:02.543 +0545]: [36mAudit system initialized successfully[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.544 +0545]: [36mGeoIP module: Available[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.544 +0545]: [36m✅ Audit system initialized[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+✅ Settings loaded from database
+[32mINFO[39m [2026-03-10 01:31:02.601 +0545]: [36mEmail cron jobs scheduled (daily @ 8 AM, weekly Monday @ 7 AM NPT)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.602 +0545]: [36m✅ Email cron jobs started[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.608 +0545]: [36m✅ Audit cleanup job scheduled (daily at 2 AM)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[PerfScheduler] Starting performance monitoring...
+[PerfScheduler] Health checks scheduled.
+[32mINFO[39m [2026-03-10 01:31:02.623 +0545]: [36mPerf monitoring → initialized (metrics & health checks)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.623 +0545]: [36mMemory leak monitoring started (threshold: 1200 MB)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+
+                    ███╗   ███╗   ███╗   ██╗   ███████╗
+                    ████╗ ████║   ████╗  ██║   ╚══███╔╝
+                    ██╔████╔██║   ██╔██╗ ██║     ███╔╝ 
+                    ██║╚██╔╝██║   ██║╚██╗██║    ███╔╝  
+                    ██║ ╚═╝ ██║   ██║ ╚████║   ███████╗
+                    ╚═╝     ╚═╝   ╚═╝  ╚═══╝   ╚══════╝
+
+[32mINFO[39m [2026-03-10 01:31:02.628 +0545]: [36m🚀 Wondertravelers API is running[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.628 +0545]: [36m   Port:          5000[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.629 +0545]: [36m   Mode:          Development 🛠️[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.629 +0545]: [36m   Environment:   development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.630 +0545]: [36m   Docs:          http://localhost:5000/api-docs[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.630 +0545]: [36m   Health:        http://localhost:5000/health[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.631 +0545]: [36m   Server time:   2026-03-09T19:46:02.631Z[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.631 +0545]: [36m   Heap used:     76.2 MB[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[34mDEBUG[39m [2026-03-10 01:31:02.656 +0545]: [36mCache SET (Redis)[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","key":"app_settings","ttl":86400}[39m
+[31mERROR[39m [2026-03-10 01:31:02.660 +0545]: [36mUNHANDLED REJECTION[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","reason":{},"promise":{}}[39m
+[32mINFO[39m [2026-03-10 01:31:02.685 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.697 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:46:02 +0000] "GET /api/perf/health HTTP/1.1" 200 86 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.731 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:02.735 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:46:02 +0000] "GET /api/health HTTP/1.1" 404 61 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:32.623 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:32.628 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:46:32 +0000] "GET /api/perf/health HTTP/1.1" 200 86 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:32.650 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:32.656 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:46:32 +0000] "GET /api/health HTTP/1.1" 404 61 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:31:41.396 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[34mDEBUG[39m [2026-03-10 01:31:41.414 +0545]: [36mValidation passed[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","target":"body","path":"/login"}[39m
+[32mINFO[39m [2026-03-10 01:31:41.415 +0545]: [36mLogin endpoint called[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","email":"Admin@gmail.com"}[39m
+[34mDEBUG[39m [2026-03-10 01:31:42.079 +0545]: [36mGenerated fingerprint[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","fingerprint":"7b6e89df29c50990a65591a45d629ae9","userAgentLength":10,"ip":"127.0.0.1"}[39m
+[32mINFO[39m [2026-03-10 01:31:42.086 +0545]: [36mSecurity Audit: login_success[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","userId":"69a1f113d5771285a69ac071","action":"login_success","category":"authentication","severity":"low","details":"Successful login for admin@gmail.com from IP: 127.0.0.1","ipAddress":"127.0.0.1","userAgent":"curl/8.5.0","endpoint":"/login","method":"POST","success":true,"metadata":{"userId":"69a1f113d5771285a69ac071","username":"admin","email":"admin@gmail.com","role":"admin","active":true}}[39m
+[32mINFO[39m [2026-03-10 01:31:42.087 +0545]: [36mUser logged in successfully[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","userId":"69a1f113d5771285a69ac071","email":"admin@gmail.com"}[39m
+[Notification] Login: {"event":"login","userId":"69a1f113d5771285a69ac071","timestamp":"2026-03-09T19:46:42.087Z","details":{"ip":"127.0.0.1","userAgent":"curl/8.5.0"}}
+[32mINFO[39m [2026-03-10 01:31:42.089 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:46:42 +0000] "POST /api/auth/login HTTP/1.1" 200 1390 "-" "curl/8.5.0"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:02.622 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:02.629 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:47:02 +0000] "GET /api/perf/health HTTP/1.1" 200 86 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:02.642 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:02.648 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:47:02 +0000] "GET /api/health HTTP/1.1" 404 61 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:07.736 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:07.740 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:47:07 +0000] "GET /health HTTP/1.1" 200 119 "-" "curl/8.5.0"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:32.615 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:32.620 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:47:32 +0000] "GET /api/perf/health HTTP/1.1" 200 86 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:32.628 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:32.630 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:47:32 +0000] "GET /api/health HTTP/1.1" 404 61 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:32:55.326 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[34mDEBUG[39m [2026-03-10 01:32:55.331 +0545]: [36mValidation passed[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","target":"body","path":"/login"}[39m
+[32mINFO[39m [2026-03-10 01:32:55.332 +0545]: [36mLogin endpoint called[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","email":"Admin@gmail.com"}[39m
+[34mDEBUG[39m [2026-03-10 01:32:55.997 +0545]: [36mGenerated fingerprint[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","fingerprint":"973e53bdfb079430a75cc3a6a9959a33","userAgentLength":10,"ip":"127.0.0.1"}[39m
+[32mINFO[39m [2026-03-10 01:32:56.004 +0545]: [36mSecurity Audit: login_success[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","userId":"69a1f113d5771285a69ac071","action":"login_success","category":"authentication","severity":"low","details":"Successful login for admin@gmail.com from IP: 127.0.0.1","ipAddress":"127.0.0.1","userAgent":"curl/8.5.0","endpoint":"/login","method":"POST","success":true,"metadata":{"userId":"69a1f113d5771285a69ac071","username":"admin","email":"admin@gmail.com","role":"admin","active":true}}[39m
+[32mINFO[39m [2026-03-10 01:32:56.005 +0545]: [36mUser logged in successfully[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0","userId":"69a1f113d5771285a69ac071","email":"admin@gmail.com"}[39m
+[Notification] Login: {"event":"login","userId":"69a1f113d5771285a69ac071","timestamp":"2026-03-09T19:47:56.006Z","details":{"ip":"127.0.0.1","userAgent":"curl/8.5.0"}}
+[32mINFO[39m [2026-03-10 01:32:56.009 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:47:56 +0000] "POST /api/auth/login HTTP/1.1" 200 1390 "-" "curl/8.5.0"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:33:02.614 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:33:02.617 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:48:02 +0000] "GET /api/perf/health HTTP/1.1" 200 86 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:33:02.620 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:33:02.624 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:48:02 +0000] "GET /api/health HTTP/1.1" 404 61 "-" "axios/1.13.5"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:33:09.197 +0545]: [36mCORS: Missing origin header in development[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+[32mINFO[39m [2026-03-10 01:33:17.192 +0545]: [36m127.0.0.1 - - [09/Mar/2026:19:48:17 +0000] "GET /api/admin/users/all?page=1&limit=5 HTTP/1.1" - - "-" "curl/8.5.0"[39m [90m{"host":"xettry-Aspire-E5-571","app":"chrono-vault","version":"1.0.0"}[39m
+Killed
