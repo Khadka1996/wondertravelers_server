@@ -8,28 +8,30 @@ import { sendLoginNotification, sendSecurityAlert } from '../../utils/notificati
 // Cookie configuration constants
 const isProduction = process.env.NODE_ENV === 'production';
 
-// For development, allow lax sameSite which permits cookies on cross-origin POST with credentials
-// For production, use strict for maximum security
+// ✅ IMPORTANT: For cross-domain frontend (wondertravelers.com) and backend (shirijanga.com):
+// - Use 'Lax' to allow cookies on safe cross-origin requests (GET, navigation)
+// - Use 'None' requires Secure flag and HTTPS (for unrestricted cross-origin access)
+// - Frontend must send: fetch(..., { credentials: 'include' })
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction, // Only HTTPS in production
-  sameSite: isProduction ? 'strict' : 'lax', // lax allows cookies on cross-origin POST
+  secure: isProduction, // Enforce HTTPS in production
+  sameSite: 'Lax', // Allows cookies on cross-origin POST with credentials (not 'strict')
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 const ACCESS_TOKEN_OPTIONS = {
   httpOnly: true,
-  secure: isProduction, // Only HTTPS in production
-  sameSite: isProduction ? 'strict' : 'lax', // lax allows cookies on cross-origin POST
+  secure: isProduction, // Enforce HTTPS in production
+  sameSite: 'Lax', // Allows cookies on cross-origin requests
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 15 * 60 * 1000,
 };
 
 const FINGERPRINT_OPTIONS = {
   httpOnly: false,
-  secure: isProduction, // Only HTTPS in production
-  sameSite: isProduction ? 'strict' : 'lax', // lax allows cookies on cross-origin POST
+  secure: isProduction, // Enforce HTTPS in production
+  sameSite: 'Lax', // Allows cookies on cross-origin requests
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };

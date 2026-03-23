@@ -26,7 +26,9 @@ const securityConfig = {
 		maxAge: Number(process.env.SESSION_MAX_AGE) || 1000 * 60 * 60 * 24 * 7, // 7 days
 		secureOnly: NODE_ENV === 'production',
 		httpOnly: true,
-		sameSite: NODE_ENV === 'production' ? 'lax' : 'lax',
+		// ✅ IMPORTANT: Use 'Lax' for cross-domain setup (frontend: wondertravelers.com, backend: shirijanga.com)
+		// 'Lax' allows cookies on safe cross-origin requests (navigation, GET)
+		sameSite: 'Lax',
 	}
 };
 

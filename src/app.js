@@ -189,6 +189,11 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
+  // Production Frontend Origins
+  'https://www.wondertravelers.com',
+  'https://wondertravelers.com',
+  'https://wondertravelers-m90s9nruv-khadka1996s-projects.vercel.app',
+  // Environment-based URLs
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
   process.env.AUDIT_DASHBOARD_URL,
@@ -206,13 +211,14 @@ app.use(cors({
     }
 
     if (allowedOrigins.includes(origin)) {
+      logger.info('CORS allowed origin', { origin });
       callback(null, true);
     } else {
       logger.warn('CORS blocked origin', { origin, allowedOrigins });
       callback(new Error(`CORS: origin ${origin} not allowed`));
     }
   },
-  credentials: true, // Allow credentials (cookies, etc.)
+  credentials: true, // Critical: Allow credentials (cookies, HttpOnly cookies, etc.)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -227,7 +233,7 @@ app.use(cors({
   exposedHeaders: ['X-Response-Time', 'X-Request-ID', 'X-Audit-Event-Id'],
   maxAge: 86400,
   preflightContinue: false,
-  optionsSuccessStatus: 204,
+  optionsSuccessStatus: 200, // Some clients require 200 instead of 204
 }));
 
 // ========================
