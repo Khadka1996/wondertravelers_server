@@ -28,6 +28,7 @@ const securityConfig = {
 		httpOnly: true,
 		// ✅ IMPORTANT: Use 'Lax' for cross-domain setup (frontend: wondertravelers.com, backend: shirijanga.com)
 		// 'Lax' allows cookies on safe cross-origin requests (navigation, GET)
+		// Always use secure: true when frontend is HTTPS (regardless of NODE_ENV)
 		sameSite: 'Lax',
 	}
 };

@@ -12,9 +12,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 // - Use 'Lax' to allow cookies on safe cross-origin requests (GET, navigation)
 // - Use 'None' requires Secure flag and HTTPS (for unrestricted cross-origin access)
 // - Frontend must send: fetch(..., { credentials: 'include' })
+// - Use secure: true when frontend is HTTPS (regardless of NODE_ENV)
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction, // Enforce HTTPS in production
+  secure: true, // ✅ ALWAYS true for cross-domain HTTPS frontend/backend
   sameSite: 'Lax', // Allows cookies on cross-origin POST with credentials (not 'strict')
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -22,7 +23,7 @@ const COOKIE_OPTIONS = {
 
 const ACCESS_TOKEN_OPTIONS = {
   httpOnly: true,
-  secure: isProduction, // Enforce HTTPS in production
+  secure: true, // ✅ ALWAYS true for cross-domain HTTPS frontend/backend
   sameSite: 'Lax', // Allows cookies on cross-origin requests
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 15 * 60 * 1000,
@@ -30,7 +31,7 @@ const ACCESS_TOKEN_OPTIONS = {
 
 const FINGERPRINT_OPTIONS = {
   httpOnly: false,
-  secure: isProduction, // Enforce HTTPS in production
+  secure: true, // ✅ ALWAYS true for cross-domain HTTPS frontend/backend
   sameSite: 'Lax', // Allows cookies on cross-origin requests
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 7 * 24 * 60 * 60 * 1000,

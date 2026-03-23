@@ -555,7 +555,7 @@ export const authMiddleware = {
       // Set new tokens in cookies
       res.cookie('access_token', tokens.accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // ✅ ALWAYS true for HTTPS frontend/backend setup
         sameSite: 'Lax', // Allow cross-origin requests
         path: '/',
         maxAge: 15 * 60 * 1000,
@@ -563,7 +563,7 @@ export const authMiddleware = {
       
       res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // ✅ ALWAYS true for HTTPS frontend/backend setup
         sameSite: 'Lax', // Allow cross-origin requests
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -573,7 +573,7 @@ export const authMiddleware = {
       const fingerprint = authService.generateFingerprint(req);
       res.cookie('fingerprint', fingerprint, {
         httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // ✅ ALWAYS true for HTTPS frontend/backend setup
         sameSite: 'Lax', // Allow cross-origin requests
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,

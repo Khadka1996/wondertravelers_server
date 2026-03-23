@@ -9,9 +9,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // ✅ IMPORTANT: For cross-domain frontend and backend:
 // Use 'Lax' to allow cookies on cross-origin requests (not 'strict')
+// Always use secure: true for HTTPS frontend/backend setup
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction,
+  secure: true, // ✅ ALWAYS true for cross-domain HTTPS setup
   sameSite: 'Lax', // Changed: allows cross-origin cookies
   path: '/', // ✅ FIXED: Changed from '/api' to '/'
   maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -19,7 +20,7 @@ const COOKIE_OPTIONS = {
 
 const ACCESS_TOKEN_OPTIONS = {
   httpOnly: true,
-  secure: isProduction,
+  secure: true, // ✅ ALWAYS true for cross-domain HTTPS setup
   sameSite: 'Lax', // Changed: allows cross-origin cookies
   path: '/', // ✅ FIXED: Changed from '/api' to '/'
   maxAge: 15 * 60 * 1000,
