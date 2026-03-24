@@ -8,15 +8,15 @@ import { sendLoginNotification, sendSecurityAlert } from '../../utils/notificati
 // Cookie configuration constants
 const isProduction = process.env.NODE_ENV === 'production';
 
-// ✅ IMPORTANT: For cross-domain frontend (wondertravelers.com) and backend (shirijanga.com):
-// - Use 'Lax' to allow cookies on safe cross-origin requests (GET, navigation)
-// - Use 'None' requires Secure flag and HTTPS (for unrestricted cross-origin access)
-// - Frontend must send: fetch(..., { credentials: 'include' })
+// ✅ IMPORTANT: For cross-domain frontend (www.wondertravelers.com) and backend (wonder.shirijanga.com):
+// - Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)
+// - Requires Secure flag and HTTPS (enforced below)
+// - Frontend MUST send: fetch(..., { credentials: 'include' })
 // - Use secure: true when frontend is HTTPS (regardless of NODE_ENV)
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true, // ✅ ALWAYS true for cross-domain HTTPS frontend/backend
-  sameSite: 'Lax', // Allows cookies on cross-origin POST with credentials (not 'strict')
+  sameSite: 'None', // ✅ CHANGED: Required for cross-domain cookie sharing (wondertravelers.com → shirijanga.com)
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
@@ -24,7 +24,7 @@ const COOKIE_OPTIONS = {
 const ACCESS_TOKEN_OPTIONS = {
   httpOnly: true,
   secure: true, // ✅ ALWAYS true for cross-domain HTTPS frontend/backend
-  sameSite: 'Lax', // Allows cookies on cross-origin requests
+  sameSite: 'None', // ✅ CHANGED: Required for cross-domain cookie sharing
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 15 * 60 * 1000,
 };
@@ -32,7 +32,7 @@ const ACCESS_TOKEN_OPTIONS = {
 const FINGERPRINT_OPTIONS = {
   httpOnly: false,
   secure: true, // ✅ ALWAYS true for cross-domain HTTPS frontend/backend
-  sameSite: 'Lax', // Allows cookies on cross-origin requests
+  sameSite: 'None', // ✅ CHANGED: Required for cross-domain cookie sharing
   path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
