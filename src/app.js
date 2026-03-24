@@ -193,6 +193,7 @@ const allowedOrigins = [
   'https://www.wondertravelers.com',
   'https://wondertravelers.com',
   'https://wondertravelers-m90s9nruv-khadka1996s-projects.vercel.app',
+  'https://wondertravelers-git-main-khadka1996s-projects.vercel.app',
   // Environment-based URLs
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
