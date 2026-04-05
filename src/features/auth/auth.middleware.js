@@ -551,20 +551,22 @@ export const authMiddleware = {
       }
 
       const tokens = await authService.refreshToken(refreshToken);
+      const useSecureCookies = process.env.NODE_ENV === 'production';
+      const cookieSameSite = useSecureCookies ? 'None' : 'Lax';
       
       // Set new tokens in cookies
       res.cookie('access_token', tokens.accessToken, {
         httpOnly: true,
-        secure: true, // ✅ ALWAYS true for HTTPS frontend/backend setup
-        sameSite: 'Lax', // Allow cross-origin requests
+        secure: useSecureCookies,
+        sameSite: cookieSameSite,
         path: '/',
         maxAge: 15 * 60 * 1000,
       });
       
       res.cookie('refresh_token', tokens.refreshToken, {
         httpOnly: true,
-        secure: true, // ✅ ALWAYS true for HTTPS frontend/backend setup
-        sameSite: 'Lax', // Allow cross-origin requests
+        secure: useSecureCookies,
+        sameSite: cookieSameSite,
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
@@ -573,8 +575,8 @@ export const authMiddleware = {
       const fingerprint = authService.generateFingerprint(req);
       res.cookie('fingerprint', fingerprint, {
         httpOnly: false,
-        secure: true, // ✅ ALWAYS true for HTTPS frontend/backend setup
-        sameSite: 'Lax', // Allow cross-origin requests
+        secure: useSecureCookies,
+        sameSite: cookieSameSite,
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });

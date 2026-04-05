@@ -6,22 +6,24 @@ import { authService } from './auth.service.js';
 import { logger } from '../../utils/logger.util.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const useSecureCookies = isProduction;
+const cookieSameSite = useSecureCookies ? 'None' : 'Lax';
 
 // ✅ IMPORTANT: For cross-domain frontend (www.wondertravelers.com) and backend (wonder.shirijanga.com):
 // Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)
 // Always use secure: true for HTTPS frontend/backend setup
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: true, // ✅ ALWAYS true for cross-domain HTTPS setup
-  sameSite: 'None', // ✅ CHANGED: Required for cross-domain cookie sharing (different domains)
+  secure: useSecureCookies,
+  sameSite: cookieSameSite,
   path: '/', // ✅ FIXED: Changed from '/api' to '/'
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 const ACCESS_TOKEN_OPTIONS = {
   httpOnly: true,
-  secure: true, // ✅ ALWAYS true for cross-domain HTTPS setup
-  sameSite: 'None', // ✅ CHANGED: Required for cross-domain cookie sharing
+  secure: useSecureCookies,
+  sameSite: cookieSameSite,
   path: '/', // ✅ FIXED: Changed from '/api' to '/'
   maxAge: 15 * 60 * 1000,
 };
