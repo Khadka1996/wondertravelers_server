@@ -5,9 +5,10 @@ import { OAuthService } from './oauth.service.js';
 import { authService } from './auth.service.js';
 import { logger } from '../../utils/logger.util.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
-const useSecureCookies = isProduction;
-const cookieSameSite = useSecureCookies ? 'None' : 'Lax';
+// OAuth cookies must survive cross-origin browser requests from the frontend.
+// Use the cross-site cookie settings that browsers require for this flow.
+const useSecureCookies = true;
+const cookieSameSite = 'None';
 
 // ✅ IMPORTANT: For cross-domain frontend (www.wondertravelers.com) and backend (wonder.shirijanga.com):
 // Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)

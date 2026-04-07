@@ -6,6 +6,9 @@ import { authService } from './auth.service.js';
 import { SecurityAudit } from './audit.model.js';
 import redisClient from '../../utils/redis.util.js';
 
+const useSecureCookies = true;
+const cookieSameSite = 'None';
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
@@ -106,7 +109,6 @@ export const authMiddleware = {
       } catch (err) {
         // Clear invalid cookie - try all possible paths
         if (req.cookies?.access_token) {
-          res.clearCookie('access_token', { path: '/api' });
           res.clearCookie('access_token', { path: '/' });
           res.clearCookie('access_token'); // Default path
         }
@@ -231,9 +233,9 @@ export const authMiddleware = {
           });
           
           // Clear all auth cookies
-          res.clearCookie('access_token', { path: '/api' });
-          res.clearCookie('refresh_token', { path: '/api' });
-          res.clearCookie('fingerprint', { path: '/api' });
+          res.clearCookie('access_token', { path: '/' });
+          res.clearCookie('refresh_token', { path: '/' });
+          res.clearCookie('fingerprint', { path: '/' });
           
           logSecurityAudit({
             userId: user._id,
@@ -262,9 +264,9 @@ export const authMiddleware = {
         });
         
         // Clear all auth cookies
-        res.clearCookie('access_token', { path: '/api' });
-        res.clearCookie('refresh_token', { path: '/api' });
-        res.clearCookie('fingerprint', { path: '/api' });
+        res.clearCookie('access_token', { path: '/' });
+        res.clearCookie('refresh_token', { path: '/' });
+        res.clearCookie('fingerprint', { path: '/' });
         
         logSecurityAudit({
           userId: user._id,
@@ -411,9 +413,9 @@ export const authMiddleware = {
       });
       
       // Clear potentially invalid cookies
-      res.clearCookie('access_token', { path: '/api' });
-      res.clearCookie('refresh_token', { path: '/api' });
-      res.clearCookie('fingerprint', { path: '/api' });
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
+      res.clearCookie('fingerprint', { path: '/' });
       
       // Log the error
       logSecurityAudit({
@@ -551,9 +553,6 @@ export const authMiddleware = {
       }
 
       const tokens = await authService.refreshToken(refreshToken);
-      const useSecureCookies = process.env.NODE_ENV === 'production';
-      const cookieSameSite = useSecureCookies ? 'None' : 'Lax';
-      
       // Set new tokens in cookies
       res.cookie('access_token', tokens.accessToken, {
         httpOnly: true,
@@ -617,9 +616,9 @@ export const authMiddleware = {
       });
       
       // Clear all auth cookies
-      res.clearCookie('access_token', { path: '/api' });
-      res.clearCookie('refresh_token', { path: '/api' });
-      res.clearCookie('fingerprint', { path: '/api' });
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
+      res.clearCookie('fingerprint', { path: '/' });
       
       res.status(401).json({
         success: false,

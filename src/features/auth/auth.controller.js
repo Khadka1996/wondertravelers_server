@@ -6,9 +6,10 @@ import { logger } from '../../utils/logger.util.js';
 import { sendLoginNotification, sendSecurityAlert } from '../../utils/notification.util.js';
 
 // Cookie configuration constants
-const isProduction = process.env.NODE_ENV === 'production';
-const useSecureCookies = isProduction;
-const cookieSameSite = useSecureCookies ? 'None' : 'Lax';
+// Auth cookies must survive cross-origin browser requests from the frontend.
+// Use the cross-site cookie settings that browsers require for this flow.
+const useSecureCookies = true;
+const cookieSameSite = 'None';
 
 // ✅ IMPORTANT: For cross-domain frontend (www.wondertravelers.com) and backend (wonder.shirijanga.com):
 // - Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)
@@ -589,9 +590,9 @@ export const authController = {
       await user.invalidateAllSessions();
 
       // Clear all auth cookies - user needs to login again
-      res.clearCookie('access_token', { path: '/api' });
-      res.clearCookie('refresh_token', { path: '/api' });
-      res.clearCookie('fingerprint', { path: '/api' });
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
+      res.clearCookie('fingerprint', { path: '/' });
 
       // Log successful password change
       await logSecurityAudit({
@@ -960,9 +961,9 @@ export const authController = {
       await user.save();
 
       // Clear all auth cookies
-      res.clearCookie('access_token', { path: '/api' });
-      res.clearCookie('refresh_token', { path: '/api' });
-      res.clearCookie('fingerprint', { path: '/api' });
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
+      res.clearCookie('fingerprint', { path: '/' });
 
       // Log account deactivation
       await logSecurityAudit({
@@ -1435,9 +1436,9 @@ export const authController = {
       const user = await authService.resetPassword(token, newPassword);
 
       // Clear all auth cookies since password has changed
-      res.clearCookie('access_token', { path: '/api' });
-      res.clearCookie('refresh_token', { path: '/api' });
-      res.clearCookie('fingerprint', { path: '/api' });
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
+      res.clearCookie('fingerprint', { path: '/' });
 
       // Log successful password reset
       await logSecurityAudit({
@@ -1509,9 +1510,9 @@ export const authController = {
   // ---------------- Clear Auth Cookies (Helper endpoint for frontend) ----------------
   async clearCookies(req, res, next) {
     try {
-      res.clearCookie('access_token', { path: '/api' });
-      res.clearCookie('refresh_token', { path: '/api' });
-      res.clearCookie('fingerprint', { path: '/api' });
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
+      res.clearCookie('fingerprint', { path: '/' });
 
       // Log cookie clearance
       await logSecurityAudit({
