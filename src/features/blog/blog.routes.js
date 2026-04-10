@@ -41,24 +41,78 @@ import {
 import { requireAdminRole } from '../../middleware/admin-privilege.middleware.js';
 import { authMiddleware } from '../auth/auth.middleware.js';
 import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
+
+const BLOG_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'blogs');
+
+if (!fs.existsSync(BLOG_UPLOAD_DIR)) {
+  fs.mkdirSync(BLOG_UPLOAD_DIR, { recursive: true });
+}
 
 // Configure Multer for blog image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/blogs/'); // Directory for storing blog images
+    if (!fs.existsSync(BLOG_UPLOAD_DIR)) {
+      fs.mkdirSync(BLOG_UPLOAD_DIR, { recursive: true });
+    }
+    cb(null, BLOG_UPLOAD_DIR); // Directory for storing blog images
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `${file.fieldname}-${uniqueSuffix}-${file.originalname}`);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const baseName = path
+      .basename(file.originalname || 'image', ext)
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .slice(0, 80) || 'image';
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${file.fieldname}-${uniqueSuffix}-${baseName}${ext}`);
   },
 });
 
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (!allowedMimeTypes.includes(file.mimetype) || !allowedExtensions.includes(ext)) {
+    return cb(new Error('Invalid file type. Only JPEG, PNG, WEBP, and GIF files are allowed.'));
+  }
+
+  cb(null, true);
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+  },
+});
+
+const handleMulterError = (middleware) => {
+  return (req, res, next) => {
+    middleware(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ success: false, error: 'File is too large. Maximum size is 5MB.' });
+        }
+        return res.status(400).json({ success: false, error: err.message });
+      }
+
+      if (err) {
+        return res.status(400).json({ success: false, error: err.message });
+      }
+
+      next();
+    });
+  };
+};
 
 // Create a new blog (Admin or Super Admin)
-router.post('/', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, upload.single('featuredImage'), createBlog);
+router.post('/', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('featuredImage')), createBlog);
 
 // ==================== ADMIN ONLY ROUTES (must come first) ====================
 
@@ -170,7 +224,7 @@ router.get('/:id/engagement', getBlogEngagement);
 router.get('/:id/similar', getSimilarBlogs);
 
 // Upload blog image
-router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, upload.single('image'), uploadBlogImage);
+router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('image')), uploadBlogImage);
 
 // ==================== GENERIC BLOG ENDPOINTS ====================
 
@@ -178,7 +232,7 @@ router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, n
 router.get('/:id', getBlogById);
 
 // Update a blog (Admin or Super Admin) - with file upload support
-router.put('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, upload.single('featuredImage'), updateBlog);
+router.put('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('featuredImage')), updateBlog);
 
 // Delete a blog (Admin or Super Admin)
 router.delete('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, deleteBlog);
