@@ -24,6 +24,7 @@ const analyticsSchema = new mongoose.Schema(
     userAgent: String,
     country: String,
     countryCode: String,
+    region: String,
     city: String,
     latitude: Number,
     longitude: Number,

@@ -47,6 +47,32 @@ const anonymizeIp = (ipAddress) => {
   return ipAddress;
 };
 
+const getRegionFromAnalytics = (countryCode, timezone) => {
+  if (timezone && typeof timezone === 'string' && timezone.includes('/')) {
+    const [region] = timezone.split('/');
+    if (region) return region;
+  }
+
+  const regionByCountryCode = {
+    NA: ['US', 'CA', 'MX'],
+    SA: ['BR', 'AR', 'CL', 'CO', 'PE', 'UY', 'PY', 'BO', 'EC', 'VE', 'GY', 'SR'],
+    EU: ['GB', 'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'IE', 'PL', 'PT', 'CZ', 'GR', 'HU', 'RO', 'UA'],
+    AS: ['NP', 'IN', 'CN', 'JP', 'KR', 'TH', 'VN', 'ID', 'MY', 'SG', 'PH', 'PK', 'BD', 'LK', 'AE', 'SA', 'QA', 'KW', 'OM'],
+    AF: ['ZA', 'EG', 'NG', 'KE', 'ET', 'GH', 'TZ', 'UG', 'DZ', 'MA', 'TN', 'CM'],
+    OC: ['AU', 'NZ', 'FJ', 'PG'],
+  };
+
+  const code = (countryCode || '').toUpperCase();
+  if (regionByCountryCode.NA.includes(code)) return 'North America';
+  if (regionByCountryCode.SA.includes(code)) return 'South America';
+  if (regionByCountryCode.EU.includes(code)) return 'Europe';
+  if (regionByCountryCode.AS.includes(code)) return 'Asia';
+  if (regionByCountryCode.AF.includes(code)) return 'Africa';
+  if (regionByCountryCode.OC.includes(code)) return 'Oceania';
+
+  return 'Local/Private';
+};
+
 /**
  * Track analytics event with geolocation
  */
@@ -97,6 +123,7 @@ export const trackAnalyticsEvent = async (req, eventType, additionalData = {}) =
       referrer: req.get('referer') || null,
       country: countryName,
       countryCode: countryCode,
+      region: getRegionFromAnalytics(countryCode, geoData?.timezone),
       city: geoData?.city || 'Unknown',
       latitude: geoData?.ll?.[0] || null,
       longitude: geoData?.ll?.[1] || null,
@@ -1302,6 +1329,50 @@ export const getDetailedWebAnalytics = async (days = 30) => {
       },
     ]);
 
+    // Country-wise visit metrics
+    const countryVisits = await Analytics.aggregate([
+      {
+        $match: {
+          type: 'page_view',
+          timestamp: { $gte: startDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            country: { $ifNull: ['$country', 'Local/Private'] },
+            countryCode: { $ifNull: ['$countryCode', 'XX'] },
+            region: { $ifNull: ['$region', 'Local/Private'] },
+          },
+          visits: { $sum: 1 },
+          uniqueVisitors: { $addToSet: '$ipAddress' },
+          lastVisit: { $max: '$timestamp' },
+        },
+      },
+      {
+        $addFields: {
+          uniqueVisitorCount: { $size: '$uniqueVisitors' },
+        },
+      },
+      {
+        $sort: { visits: -1 },
+      },
+      {
+        $limit: 50,
+      },
+      {
+        $project: {
+          _id: 0,
+          country: '$_id.country',
+          countryCode: '$_id.countryCode',
+          region: '$_id.region',
+          visits: 1,
+          uniqueVisitors: '$uniqueVisitorCount',
+          lastVisit: 1,
+        },
+      },
+    ]);
+
     // Hour-based heatmap (traffic by hour of day) - with all 24 hours
     const hourlyHeatmapRaw = await Analytics.aggregate([
       {
@@ -1420,6 +1491,7 @@ export const getDetailedWebAnalytics = async (days = 30) => {
       monthly: monthlyStats,
       yearly: yearlyStats,
       pageMetrics,
+      countryVisits,
       hourlyHeatmap,
       dayOfWeekHeatmap,
       timestamp: new Date(),
@@ -1436,6 +1508,91 @@ export const getDetailedWebAnalytics = async (days = 30) => {
     return result;
   } catch (error) {
     console.error('Error getting detailed web analytics:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get visits grouped by country
+ * @param {number} days - Number of days to analyze
+ * @returns {Object} Country-wise visit analytics
+ */
+export const getVisitsByCountry = async (days = 30) => {
+  try {
+    const validDays = validateDays(days);
+    const cacheKey = `analytics:visits-by-country:${validDays}`;
+
+    try {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        console.log(`✅ Cache hit for ${cacheKey}`);
+        return JSON.parse(cached);
+      }
+    } catch (cacheErr) {
+      console.warn('Cache read failed, continuing with DB query:', cacheErr.message);
+    }
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - validDays);
+
+    const countryVisits = await Analytics.aggregate([
+      {
+        $match: {
+          type: 'page_view',
+          timestamp: { $gte: startDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            country: { $ifNull: ['$country', 'Local/Private'] },
+            countryCode: { $ifNull: ['$countryCode', 'XX'] },
+            region: { $ifNull: ['$region', 'Local/Private'] },
+          },
+          visits: { $sum: 1 },
+          uniqueVisitors: { $addToSet: '$ipAddress' },
+          lastVisit: { $max: '$timestamp' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          country: '$_id.country',
+          countryCode: '$_id.countryCode',
+          region: '$_id.region',
+          visits: 1,
+          uniqueVisitors: { $size: '$uniqueVisitors' },
+          lastVisit: 1,
+        },
+      },
+      {
+        $sort: { visits: -1 },
+      },
+      {
+        $limit: 100,
+      },
+    ]);
+
+    const totalVisits = countryVisits.reduce((sum, row) => sum + (row.visits || 0), 0);
+
+    const result = {
+      period: `Last ${validDays} days`,
+      totalVisits,
+      uniqueCountries: countryVisits.length,
+      countryVisits,
+      timestamp: new Date(),
+    };
+
+    try {
+      await redisClient.setex(cacheKey, 600, JSON.stringify(result));
+      console.log(`✅ Cached ${cacheKey} for 10 minutes`);
+    } catch (cacheErr) {
+      console.warn('Cache write failed:', cacheErr.message);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error getting visits by country:', error);
     throw error;
   }
 };

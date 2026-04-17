@@ -273,6 +273,32 @@ export const getDetailedWebAnalytics = async (req, res) => {
 };
 
 /**
+ * GET /analytics/visits-by-country
+ * Get country-wise visit analytics
+ * Query params: days (1-365, default 30)
+ */
+export const getVisitsByCountry = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+
+    logger.info(`Fetching visits by country for ${days} days`);
+    const stats = await analyticsService.getVisitsByCountry(parseInt(days));
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    logger.error('Error fetching visits by country:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch visits by country',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * GET /analytics/debug/stats
  * Debug endpoint - Check if analytics are being tracked
  * Admin only

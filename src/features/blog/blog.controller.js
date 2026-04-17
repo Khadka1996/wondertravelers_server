@@ -702,8 +702,10 @@ export const createBlog = async (req, res) => {
 
     await blog.save();
     
-    // Populate references in response
-    const populatedBlog = await blog.populate('author', 'name profileImage bio').populate('category', 'name slug');
+    // Populate references in response by refetching the document
+    const populatedBlog = await Blog.findById(blog._id)
+      .populate('author', 'name profileImage bio')
+      .populate('category', 'name slug');
 
     res.status(201).json({ success: true, data: populatedBlog, message: 'Blog created successfully' });
   } catch (error) {

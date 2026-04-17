@@ -82,6 +82,13 @@ router.get(
   analyticsController.getPageVisitAnalytics
 );
 
+// Get visits grouped by country
+router.get(
+  '/visits-by-country',
+  validateAnalyticsQuery,
+  analyticsController.getVisitsByCountry
+);
+
 // Get detailed web analytics
 router.get(
   '/detailed-web-analytics',

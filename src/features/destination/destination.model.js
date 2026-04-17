@@ -27,13 +27,11 @@ const destinationSchema = new mongoose.Schema(
 
     shortDesc: {
       type: String,
-      required: [true, 'Short description is required'],
-      maxlength: [200, 'Short description cannot exceed 200 characters']
+      required: [true, 'Short description is required']
     },
 
     longDesc: {
-      type: String,
-      maxlength: [2000, 'Long description cannot exceed 2000 characters']
+      type: String
     },
 
     // Featured image for destination
