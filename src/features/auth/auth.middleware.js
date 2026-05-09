@@ -6,8 +6,10 @@ import { authService } from './auth.service.js';
 import { SecurityAudit } from './audit.model.js';
 import redisClient from '../../utils/redis.util.js';
 
-const useSecureCookies = true;
-const cookieSameSite = 'None';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const isProd = NODE_ENV === 'production';
+const useSecureCookies = isProd; // ✅ Only use secure cookies in production (HTTPS)
+const cookieSameSite = isProd ? 'None' : 'Lax'; // ✅ Use 'Lax' in dev (localhost), 'None' in prod
 
 const JWT_SECRET = process.env.JWT_SECRET;
 

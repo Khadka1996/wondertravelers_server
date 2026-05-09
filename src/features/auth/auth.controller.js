@@ -8,14 +8,16 @@ import { sendLoginNotification, sendSecurityAlert } from '../../utils/notificati
 // Cookie configuration constants
 // Auth cookies must survive cross-origin browser requests from the frontend.
 // Use the cross-site cookie settings that browsers require for this flow.
-const useSecureCookies = true;
-const cookieSameSite = 'None';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const isProd = NODE_ENV === 'production';
+const useSecureCookies = isProd; // ✅ Only use secure cookies in production (HTTPS)
+const cookieSameSite = isProd ? 'None' : 'Lax'; // ✅ Use 'Lax' in dev (localhost), 'None' in prod
 
 // ✅ IMPORTANT: For cross-domain frontend (www.wondertravelers.com) and backend (wonder.shirijanga.com):
-// - Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)
-// - Requires Secure flag and HTTPS (enforced below)
+// - In production: Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)
+// - Requires Secure flag and HTTPS (enforced for production)
+// - In development (localhost): Use 'Lax' with secure: false (HTTP allowed)
 // - Frontend MUST send: fetch(..., { credentials: 'include' })
-// - Use secure: true when frontend is HTTPS (regardless of NODE_ENV)
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: useSecureCookies,

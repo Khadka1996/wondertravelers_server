@@ -85,19 +85,17 @@ const blogSchema = new Schema(
     title: { 
       type: String, 
       required: true,
-      trim: true,
-      maxlength: 200
+      trim: true
     },
     subHeading: {
       type: String,
       required: true,
-      trim: true,
-      maxlength: 200
+      trim: true
     },
     content: { 
       type: String, 
       required: true,
-      minlength: 50 // Minimum content length
+      trim: true
     },
     excerpt: {
       type: String,
