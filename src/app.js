@@ -143,7 +143,7 @@ const helmetDirectives = {
   connectSrc: [
     "'self'",
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    process.env.API_URL || 'http://localhost:5000',
+    process.env.API_BASE_URL || process.env.API_URL || 'https://api.www.wondertravelers.com',
     process.env.AUDIT_STREAM_URL
   ].filter(Boolean),
   fontSrc: ["'self'", 'https:', 'data:'],
@@ -182,12 +182,17 @@ app.use(helmet({
 // ========================
 // CORS with Detailed Logging
 // ========================
-const allowedOrigins = [
+const normalizeOrigins = (values = []) => values
+  .flatMap((value) => String(value || '').split(','))
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+const getConfiguredOrigins = () => normalizeOrigins([
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-  'http://localhost:5000',
+  'https://api.www.wondertravelers.com',
   'http://127.0.0.1:5000',
   // Production Frontend Origins
   'https://www.wondertravelers.com',
@@ -198,7 +203,39 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
   process.env.AUDIT_DASHBOARD_URL,
-].filter(Boolean);
+  process.env.CORS_ORIGINS,
+  process.env.BACKEND_API_URL,
+]);
+
+const allowedOrigins = [...new Set(getConfiguredOrigins())];
+
+const isSameOriginRequest = (origin) => {
+  if (!origin) return false;
+
+  try {
+    const requestOrigin = new URL(origin);
+    const configuredHosts = new Set(
+      normalizeOrigins([
+        process.env.FRONTEND_URL,
+        process.env.ADMIN_URL,
+        process.env.AUDIT_DASHBOARD_URL,
+        process.env.BACKEND_API_URL,
+      ])
+        .map((value) => {
+          try {
+            return new URL(value).host;
+          } catch {
+            return value;
+          }
+        })
+        .filter(Boolean)
+    );
+
+    return configuredHosts.has(requestOrigin.host);
+  } catch {
+    return false;
+  }
+};
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -211,7 +248,7 @@ app.use(cors({
       return callback(null, true); // Allow requests without origin in development
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || isSameOriginRequest(origin)) {
       logger.info('CORS allowed origin', { origin });
       callback(null, true);
     } else {

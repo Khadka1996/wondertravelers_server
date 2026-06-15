@@ -2,14 +2,70 @@
 import jwt from 'jsonwebtoken';
 import { User } from './auth.model.js';
 import { logger } from '../../utils/logger.util.js';
-import { authService } from './auth.service.js';
+import { authService, parseExpiryToMs } from './auth.service.js';
 import { SecurityAudit } from './audit.model.js';
 import redisClient from '../../utils/redis.util.js';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const isProd = NODE_ENV === 'production';
-const useSecureCookies = isProd; // ✅ Only use secure cookies in production (HTTPS)
-const cookieSameSite = isProd ? 'None' : 'Lax'; // ✅ Use 'Lax' in dev (localhost), 'None' in prod
+const ACCESS_COOKIE_MAX_AGE_MS = parseExpiryToMs(process.env.JWT_ACCESS_EXPIRY, '7d');
+const REFRESH_COOKIE_MAX_AGE_MS = parseExpiryToMs(process.env.JWT_REFRESH_EXPIRY, '7d');
+
+const getOriginHost = (value) => {
+  if (!value) return null;
+  try {
+    return new URL(value).host;
+  } catch {
+    return value;
+  }
+};
+
+const getCookieOptions = (req, { httpOnly = true, maxAge = 7 * 24 * 60 * 60 * 1000 } = {}) => {
+  const explicitSameSite = process.env.COOKIE_SAME_SITE?.trim().toLowerCase();
+  const requestOrigin = req.headers.origin || req.headers.referer || '';
+  const requestHost = getOriginHost(requestOrigin);
+  const frontendHost = getOriginHost(process.env.FRONTEND_URL);
+  const adminHost = getOriginHost(process.env.ADMIN_URL);
+  const isCrossSiteRequest = !!requestHost && !!(frontendHost || adminHost) && ![frontendHost, adminHost].filter(Boolean).includes(requestHost);
+  const sameSite = ['none', 'lax', 'strict'].includes(explicitSameSite)
+    ? explicitSameSite
+    : (isCrossSiteRequest ? 'None' : 'Lax');
+  const secure = process.env.COOKIE_SECURE === 'true'
+    ? true
+    : process.env.COOKIE_SECURE === 'false'
+      ? false
+      : sameSite === 'None' || req.secure || req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https';
+
+  const options = {
+    httpOnly,
+    secure,
+    sameSite,
+    path: '/',
+    maxAge,
+  };
+
+  if (process.env.COOKIE_DOMAIN) {
+    options.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  return options;
+};
+
+const getCookieClearOptions = (req) => {
+  const { secure, sameSite, domain } = getCookieOptions(req, { maxAge: 0 });
+  return {
+    path: '/',
+    secure,
+    sameSite,
+    ...(domain ? { domain } : {}),
+  };
+};
+
+const clearAuthCookies = (req, res) => {
+  const clearOptions = getCookieClearOptions(req);
+  res.clearCookie('access_token', clearOptions);
+  res.clearCookie('refresh_token', clearOptions);
+  res.clearCookie('fingerprint', clearOptions);
+};
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -48,9 +104,7 @@ export const authMiddleware = {
    * Protect route: validate JWT from cookies or Authorization header
    */
   async protect(req, res, next) {
-    console.log('🔐 [AUTH-DEBUG] Protect middleware called at', new Date().toISOString());
     try {
-      console.log('🔐 [AUTH-DEBUG] Getting token from request');
       // 1. Get token from cookie (primary) or Authorization header (fallback)
       let token = null;
       let tokenSource = 'none';
@@ -59,7 +113,6 @@ export const authMiddleware = {
       if (req.cookies?.access_token) {
         token = req.cookies.access_token;
         tokenSource = 'cookie';
-        console.log('🔐 [AUTH-DEBUG] Found token in cookie');
         logger.debug('Using access token from cookie');
       }
       // Priority 2: Authorization header (backward compatibility)
@@ -82,7 +135,6 @@ export const authMiddleware = {
           hasCookies: !!req.cookies,
           cookieKeys: req.cookies ? Object.keys(req.cookies) : [],
           hasAuthHeader: !!req.headers.authorization,
-          cookieHeader: req.headers.cookie?.substring(0, 50) // Log first 50 chars for debugging
         });
         
         // Log failed authentication attempt (fire-and-forget, don't await)
@@ -111,8 +163,7 @@ export const authMiddleware = {
       } catch (err) {
         // Clear invalid cookie - try all possible paths
         if (req.cookies?.access_token) {
-          res.clearCookie('access_token', { path: '/' });
-          res.clearCookie('access_token'); // Default path
+          clearAuthCookies(req, res);
         }
         
         const message = err.name === 'TokenExpiredError'
@@ -173,10 +224,8 @@ export const authMiddleware = {
       }
 
       // 4. Fetch user with minimal fields for performance
-      console.log('🔐 [AUTH-DEBUG] About to query User.findById for', decoded.id);
       const user = await User.findById(decoded.id)
         .select('_id username email role active passwordLastChanged sessionVersion lastLogin trustedDevices');
-      console.log('🔐 [AUTH-DEBUG] User query completed:', !!user);
 
       if (!user) {
         logger.warn('User not found for valid token', { userId: decoded.id });
@@ -235,9 +284,7 @@ export const authMiddleware = {
           });
           
           // Clear all auth cookies
-          res.clearCookie('access_token', { path: '/' });
-          res.clearCookie('refresh_token', { path: '/' });
-          res.clearCookie('fingerprint', { path: '/' });
+          clearAuthCookies(req, res);
           
           logSecurityAudit({
             userId: user._id,
@@ -266,9 +313,7 @@ export const authMiddleware = {
         });
         
         // Clear all auth cookies
-        res.clearCookie('access_token', { path: '/' });
-        res.clearCookie('refresh_token', { path: '/' });
-        res.clearCookie('fingerprint', { path: '/' });
+        clearAuthCookies(req, res);
         
         logSecurityAudit({
           userId: user._id,
@@ -415,9 +460,7 @@ export const authMiddleware = {
       });
       
       // Clear potentially invalid cookies
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
       
       // Log the error
       logSecurityAudit({
@@ -556,31 +599,13 @@ export const authMiddleware = {
 
       const tokens = await authService.refreshToken(refreshToken);
       // Set new tokens in cookies
-      res.cookie('access_token', tokens.accessToken, {
-        httpOnly: true,
-        secure: useSecureCookies,
-        sameSite: cookieSameSite,
-        path: '/',
-        maxAge: 15 * 60 * 1000,
-      });
+      res.cookie('access_token', tokens.accessToken, getCookieOptions(req, { maxAge: ACCESS_COOKIE_MAX_AGE_MS }));
       
-      res.cookie('refresh_token', tokens.refreshToken, {
-        httpOnly: true,
-        secure: useSecureCookies,
-        sameSite: cookieSameSite,
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie('refresh_token', tokens.refreshToken, getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }));
 
       // Update fingerprint (optional)
       const fingerprint = authService.generateFingerprint(req);
-      res.cookie('fingerprint', fingerprint, {
-        httpOnly: false,
-        secure: useSecureCookies,
-        sameSite: cookieSameSite,
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie('fingerprint', fingerprint, { ...getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }), httpOnly: false });
 
       // Log successful token refresh
       logSecurityAudit({
@@ -618,9 +643,7 @@ export const authMiddleware = {
       });
       
       // Clear all auth cookies
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
       
       res.status(401).json({
         success: false,

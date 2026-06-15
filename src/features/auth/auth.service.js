@@ -11,8 +11,36 @@ import { checkBruteForce } from './auth.enhanced.js';
 // ========================
 const JWT_ACCESS_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
-const ACCESS_TOKEN_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
+const ACCESS_TOKEN_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '7d';
 const REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
+
+const parseExpiryToMs = (value, fallback = '30d') => {
+  if (typeof value !== 'string' || !value.trim()) {
+    value = fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(/^(\d+)\s*([smhdwmy])$/);
+
+  if (!match) {
+    return 30 * 24 * 60 * 60 * 1000;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multipliers = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+    w: 7 * 24 * 60 * 60 * 1000,
+    y: 365 * 24 * 60 * 60 * 1000,
+  };
+
+  return amount * (multipliers[unit] || multipliers.d);
+};
+
+export { parseExpiryToMs };
 
 // Validate at module load
 (() => {

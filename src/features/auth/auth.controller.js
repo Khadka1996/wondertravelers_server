@@ -1,45 +1,71 @@
 // src/features/auth/auth.controller.js
-import { authService } from './auth.service.js';
+import { authService, parseExpiryToMs } from './auth.service.js';
 import { User } from './auth.model.js';
 import { SecurityAudit, SEVERITY_LEVELS, ACTION_CATEGORIES } from './audit.model.js'; // NEW: Import audit model
 import { logger } from '../../utils/logger.util.js';
 import { sendLoginNotification, sendSecurityAlert } from '../../utils/notification.util.js';
 
-// Cookie configuration constants
-// Auth cookies must survive cross-origin browser requests from the frontend.
-// Use the cross-site cookie settings that browsers require for this flow.
+// Cookie configuration helpers
+// Auth cookies should work for both same-origin and cross-site deployments.
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const isProd = NODE_ENV === 'production';
-const useSecureCookies = isProd; // ✅ Only use secure cookies in production (HTTPS)
-const cookieSameSite = isProd ? 'None' : 'Lax'; // ✅ Use 'Lax' in dev (localhost), 'None' in prod
+const ACCESS_COOKIE_MAX_AGE_MS = parseExpiryToMs(process.env.JWT_ACCESS_EXPIRY, '7d');
+const REFRESH_COOKIE_MAX_AGE_MS = parseExpiryToMs(process.env.JWT_REFRESH_EXPIRY, '7d');
 
-// ✅ IMPORTANT: For cross-domain frontend (www.wondertravelers.com) and backend (wonder.shirijanga.com):
-// - In production: Use 'None' to allow cookies on ALL cross-origin requests (REQUIRED for different domains)
-// - Requires Secure flag and HTTPS (enforced for production)
-// - In development (localhost): Use 'Lax' with secure: false (HTTP allowed)
-// - Frontend MUST send: fetch(..., { credentials: 'include' })
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: useSecureCookies,
-  sameSite: cookieSameSite,
-  path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+const getOriginHost = (value) => {
+  if (!value) return null;
+  try {
+    return new URL(value).host;
+  } catch {
+    return value;
+  }
 };
 
-const ACCESS_TOKEN_OPTIONS = {
-  httpOnly: true,
-  secure: useSecureCookies,
-  sameSite: cookieSameSite,
-  path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
-  maxAge: 15 * 60 * 1000,
+const getCookieOptions = (req, { httpOnly = true, maxAge = 7 * 24 * 60 * 60 * 1000 } = {}) => {
+  const explicitSameSite = process.env.COOKIE_SAME_SITE?.trim().toLowerCase();
+  const requestOrigin = req.headers.origin || req.headers.referer || '';
+  const requestHost = getOriginHost(requestOrigin);
+  const frontendHost = getOriginHost(process.env.FRONTEND_URL);
+  const adminHost = getOriginHost(process.env.ADMIN_URL);
+  const isCrossSiteRequest = !!requestHost && !!(frontendHost || adminHost) && ![frontendHost, adminHost].filter(Boolean).includes(requestHost);
+  const sameSite = ['none', 'lax', 'strict'].includes(explicitSameSite)
+    ? explicitSameSite
+    : (isCrossSiteRequest ? 'None' : 'Lax');
+  const secure = process.env.COOKIE_SECURE === 'true'
+    ? true
+    : process.env.COOKIE_SECURE === 'false'
+      ? false
+      : sameSite === 'None' || req.secure || req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https';
+
+  const options = {
+    httpOnly,
+    secure,
+    sameSite,
+    path: '/',
+    maxAge,
+  };
+
+  if (process.env.COOKIE_DOMAIN) {
+    options.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  return options;
 };
 
-const FINGERPRINT_OPTIONS = {
-  httpOnly: false,
-  secure: useSecureCookies,
-  sameSite: cookieSameSite,
-  path: '/', // ✅ FIXED: Changed from '/api' so cookies are sent to all routes
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+const getCookieClearOptions = (req) => {
+  const { secure, sameSite, domain } = getCookieOptions(req, { maxAge: 0 });
+  return {
+    path: '/',
+    secure,
+    sameSite,
+    ...(domain ? { domain } : {}),
+  };
+};
+
+const clearAuthCookies = (req, res) => {
+  const clearOptions = getCookieClearOptions(req);
+  res.clearCookie('access_token', clearOptions);
+  res.clearCookie('refresh_token', clearOptions);
+  res.clearCookie('fingerprint', clearOptions);
 };
 
 // Helper function to log security audit events
@@ -100,12 +126,12 @@ export const authController = {
       await user.save({ validateBeforeSave: false });
 
       // Set tokens in HttpOnly cookies
-      res.cookie('access_token', accessToken, ACCESS_TOKEN_OPTIONS);
-      res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
+      res.cookie('access_token', accessToken, getCookieOptions(req, { maxAge: ACCESS_COOKIE_MAX_AGE_MS }));
+      res.cookie('refresh_token', refreshToken, getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }));
 
       // Add fingerprint for CSRF protection
       const fingerprint = authService.generateFingerprint(req);
-      res.cookie('fingerprint', fingerprint, FINGERPRINT_OPTIONS);
+      res.cookie('fingerprint', fingerprint, { ...getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }), httpOnly: false });
 
       // Log successful registration
       await logSecurityAudit({
@@ -171,12 +197,12 @@ export const authController = {
       const { user, accessToken, refreshToken } = await authService.login(email, password, { ip: req.ip, userAgent: req.headers['user-agent'] });
 
       // Set tokens in HttpOnly cookies
-      res.cookie('access_token', accessToken, ACCESS_TOKEN_OPTIONS);
-      res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
+      res.cookie('access_token', accessToken, getCookieOptions(req, { maxAge: ACCESS_COOKIE_MAX_AGE_MS }));
+      res.cookie('refresh_token', refreshToken, getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }));
 
       // Add fingerprint for CSRF protection
       const fingerprint = authService.generateFingerprint(req);
-      res.cookie('fingerprint', fingerprint, FINGERPRINT_OPTIONS);
+      res.cookie('fingerprint', fingerprint, { ...getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }), httpOnly: false });
 
       // Log successful login
       await logSecurityAudit({
@@ -276,12 +302,12 @@ export const authController = {
       });
 
       // Set new tokens in cookies
-      res.cookie('access_token', tokens.accessToken, ACCESS_TOKEN_OPTIONS);
-      res.cookie('refresh_token', tokens.refreshToken, COOKIE_OPTIONS);
+      res.cookie('access_token', tokens.accessToken, getCookieOptions(req, { maxAge: ACCESS_COOKIE_MAX_AGE_MS }));
+      res.cookie('refresh_token', tokens.refreshToken, getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }));
 
       // Update fingerprint
       const fingerprint = authService.generateFingerprint(req);
-      res.cookie('fingerprint', fingerprint, FINGERPRINT_OPTIONS);
+      res.cookie('fingerprint', fingerprint, { ...getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }), httpOnly: false });
 
       // Log token refresh
       await logSecurityAudit({
@@ -303,7 +329,7 @@ export const authController = {
       res.json({
         success: true,
         message: 'Tokens refreshed successfully',
-        expiresIn: 15 * 60 * 1000,
+        expiresIn: ACCESS_COOKIE_MAX_AGE_MS,
       });
     } catch (err) {
       logger.error('Error in refresh token', { 
@@ -330,9 +356,7 @@ export const authController = {
       });
       
       // Clear all auth cookies on failure
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
-      res.clearCookie('fingerprint');
+      clearAuthCookies(req, res);
       
       next(err);
     }
@@ -346,9 +370,7 @@ export const authController = {
       await authService.logout(req.user._id);
 
       // Clear all auth cookies (path must match how they were set)
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
 
       // Log logout event
       await logSecurityAudit({
@@ -592,9 +614,7 @@ export const authController = {
       await user.invalidateAllSessions();
 
       // Clear all auth cookies - user needs to login again
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
 
       // Log successful password change
       await logSecurityAudit({
@@ -963,9 +983,7 @@ export const authController = {
       await user.save();
 
       // Clear all auth cookies
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
 
       // Log account deactivation
       await logSecurityAudit({
@@ -1438,9 +1456,7 @@ export const authController = {
       const user = await authService.resetPassword(token, newPassword);
 
       // Clear all auth cookies since password has changed
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
 
       // Log successful password reset
       await logSecurityAudit({
@@ -1512,9 +1528,7 @@ export const authController = {
   // ---------------- Clear Auth Cookies (Helper endpoint for frontend) ----------------
   async clearCookies(req, res, next) {
     try {
-      res.clearCookie('access_token', { path: '/' });
-      res.clearCookie('refresh_token', { path: '/' });
-      res.clearCookie('fingerprint', { path: '/' });
+      clearAuthCookies(req, res);
 
       // Log cookie clearance
       await logSecurityAudit({

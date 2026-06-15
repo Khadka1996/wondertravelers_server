@@ -9,7 +9,7 @@ class PerfScheduler {
     this.redisClient = redisClient;
     this.intervals = [];
     this.targetEndpoints = [
-      { url: 'http://localhost:5000/api/perf/health', service: 'backend-api' },
+      { url: 'https://api.www.wondertravelers.com/api/perf/health', service: 'backend-api' },
       { url: 'http://localhost:3000/api/health', service: 'frontend-api' },
     ];
     this.checkInterval = 30000; // 30 seconds

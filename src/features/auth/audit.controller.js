@@ -1354,7 +1354,7 @@ export const auditController = {
         process.env.AUDIT_DASHBOARD_URL,
         'http://localhost:3000',
         'http://localhost:3001',
-        'http://localhost:5000',
+        'https://api.www.wondertravelers.com',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3001',
         'http://127.0.0.1:5000'

@@ -206,16 +206,7 @@ router.delete('/:id/comments/:commentId', (req, res, next) => authMiddleware.pro
 // ==================== ENGAGEMENT & ACTION ENDPOINTS ====================
 
 // DEBUG: Log like requests before processing
-router.post('/:id/like', (req, res, next) => {
-  console.log('\n=== LIKE ROUTE HIT ===');
-  console.log('Blog ID from params:', req.params.id);
-  console.log('Authorization header:', req.headers.authorization ? '✅ EXISTS' : '❌ MISSING');
-  console.log('Cookies:', Object.keys(req.cookies || {}).join(', ') || '❌ No cookies');
-  console.log('Access token cookie:', req.cookies?.access_token ? '✅ EXISTS' : '❌ MISSING');
-  console.log('Next: calling protect middleware');
-  console.log('====================\n');
-  authMiddleware.protect(req, res, next);
-}, likeBlog);
+router.post('/:id/like', (req, res, next) => authMiddleware.protect(req, res, next), likeBlog);
 
 // Get blog engagement metrics
 router.get('/:id/engagement', getBlogEngagement);
