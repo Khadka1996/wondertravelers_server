@@ -37,7 +37,7 @@ export const getSettings = async (req, res) => {
     }
 
     // Cache the settings for 24 hours
-    await cache.set(SETTINGS_CACHE_KEY, settings, SETTINGS_CACHE_TTL);
+    await cache.set(SETTINGS_CACHE_KEY, settings.toObject ? settings.toObject() : settings, SETTINGS_CACHE_TTL);
 
     const response = {
       status: 'success',
@@ -191,7 +191,7 @@ export const initializeSettings = async () => {
       cache.set(SETTINGS_CACHE_KEY, settings, SETTINGS_CACHE_TTL);
     } else {
       // Update cache on server start
-      cache.set(SETTINGS_CACHE_KEY, settings, SETTINGS_CACHE_TTL);
+      cache.set(SETTINGS_CACHE_KEY, settings.toObject ? settings.toObject() : settings, SETTINGS_CACHE_TTL);
       console.log('✅ Settings loaded from database');
     }
   } catch (error) {

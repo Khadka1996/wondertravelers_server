@@ -21,11 +21,11 @@ export const swaggerOptions = {
     },
     servers: [
       {
-        url: 'https://api.www.wondertravelers.com',
+        url: 'https://api.wondertravelers.com',
         description: 'Development Server',
       },
       {
-        url: process.env.API_BASE_URL || 'https://api.www.wondertravelers.com',
+        url: process.env.API_BASE_URL || 'https://api.wondertravelers.com',
         description: 'Production Server',
       },
     ],

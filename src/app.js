@@ -143,7 +143,7 @@ const helmetDirectives = {
   connectSrc: [
     "'self'",
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    process.env.API_BASE_URL || process.env.API_URL || 'https://api.www.wondertravelers.com',
+    process.env.API_BASE_URL || process.env.API_URL || 'https://api.wondertravelers.com',
     process.env.AUDIT_STREAM_URL
   ].filter(Boolean),
   fontSrc: ["'self'", 'https:', 'data:'],
@@ -192,7 +192,7 @@ const getConfiguredOrigins = () => normalizeOrigins([
   'http://127.0.0.1:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3001',
-  'https://api.www.wondertravelers.com',
+  'https://api.wondertravelers.com',
   'http://127.0.0.1:5000',
   // Production Frontend Origins
   'https://www.wondertravelers.com',

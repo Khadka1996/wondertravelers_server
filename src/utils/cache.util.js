@@ -5,6 +5,26 @@ import { logger } from './logger.util.js';
 
 const nodeCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
 
+const normalizeCacheValue = (value) => {
+  if (value && typeof value === 'object') {
+    if (typeof value.toObject === 'function') {
+      try {
+        return value.toObject({ getters: false, virtuals: false });
+      } catch (_err) {
+        // Fall back to toJSON or original value
+      }
+    }
+    if (typeof value.toJSON === 'function') {
+      try {
+        return value.toJSON();
+      } catch (_err) {
+        // Fall back to original value
+      }
+    }
+  }
+  return value;
+};
+
 /**
  * Get value from cache (Redis first, then NodeCache fallback)
  * @param {string} key - Cache key
@@ -39,11 +59,13 @@ export const get = async (key) => {
  * @param {number} ttl - Time to live in seconds
  */
 export const set = async (key, value, ttl = 3600) => {
+  const normalizedValue = normalizeCacheValue(value);
+
   try {
     const redisClient_ = redisClient.getClient();
     if (redisClient_ && redisClient_.isOpen) {
       // Use setEx (camelCase) for redis v4+ with correct parameter order
-      await redisClient_.setEx(key, ttl, JSON.stringify(value));
+      await redisClient_.setEx(key, ttl, JSON.stringify(normalizedValue));
       logger.debug('Cache SET (Redis)', { key, ttl });
     }
   } catch (err) {
@@ -51,7 +73,7 @@ export const set = async (key, value, ttl = 3600) => {
   }
 
   // Always set in NodeCache as fallback
-  nodeCache.set(key, value, ttl);
+  nodeCache.set(key, normalizedValue, ttl);
   logger.debug('Cache SET (NodeCache)', { key, ttl });
 };
 

@@ -9,7 +9,7 @@ class PerfScheduler {
     this.redisClient = redisClient;
     this.intervals = [];
     this.targetEndpoints = [
-      { url: 'https://api.www.wondertravelers.com/api/perf/health', service: 'backend-api' },
+      { url: 'https://api.wondertravelers.com/api/perf/health', service: 'backend-api' },
       { url: 'http://localhost:3000/api/health', service: 'frontend-api' },
     ];
     this.checkInterval = 30000; // 30 seconds
@@ -23,11 +23,17 @@ class PerfScheduler {
 
     // Health check every 30 seconds
     this.intervals.push(
-      setInterval(() => this.runHealthChecks(), this.checkInterval)
+      setInterval(() => {
+        this.runHealthChecks().catch((err) => {
+          console.error('[PerfScheduler] Interval health check failed', err?.message || err, err?.stack || '');
+        });
+      }, this.checkInterval)
     );
 
     // Run immediately on start
-    this.runHealthChecks();
+    this.runHealthChecks().catch((err) => {
+      console.error('[PerfScheduler] Initial health check failed', err?.message || err, err?.stack || '');
+    });
 
     console.log('[PerfScheduler] Health checks scheduled.');
   }

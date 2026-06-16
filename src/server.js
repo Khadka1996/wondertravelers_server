@@ -300,8 +300,30 @@ process.on('uncaughtException', async (err) => {
   // In production, let the process continue (orchestrator will restart if needed)
 });
 
+const formatRejectionReason = (reason) => {
+  if (reason instanceof Error) {
+    return {
+      name: reason.name,
+      message: reason.message,
+      stack: reason.stack,
+    };
+  }
+  if (typeof reason === 'object' && reason !== null) {
+    try {
+      return JSON.parse(JSON.stringify(reason));
+    } catch {
+      return { ...reason, detail: String(reason) };
+    }
+  }
+  return String(reason);
+};
+
 process.on('unhandledRejection', async (reason, promise) => {
-  logger.error('UNHANDLED REJECTION', { reason, promise });
+  const formattedReason = formatRejectionReason(reason);
+  logger.error('UNHANDLED REJECTION', {
+    reason: formattedReason,
+    promise: typeof promise === 'object' ? String(promise) : promise,
+  });
   
   // Log unhandled rejections to audit system
   try {
@@ -310,14 +332,15 @@ process.on('unhandledRejection', async (reason, promise) => {
       action: 'unhandled_rejection',
       category: ACTION_CATEGORIES.SYSTEM,
       severity: SEVERITY_LEVELS.HIGH,
-      details: `Unhandled promise rejection: ${reason}`,
+      details: `Unhandled promise rejection: ${formattedReason.message || formattedReason}`,
       ipAddress: '127.0.0.1',
       endpoint: '/system/error',
       method: 'SYSTEM',
       success: false,
       source: 'system',
       metadata: {
-        reason: String(reason),
+        reason: typeof formattedReason === 'string' ? formattedReason : formattedReason.message || JSON.stringify(formattedReason),
+        stack: formattedReason.stack,
         timestamp: new Date().toISOString()
       }
     });

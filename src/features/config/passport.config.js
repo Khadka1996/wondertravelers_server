@@ -29,7 +29,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use('google', new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${process.env.API_BASE_URL || 'https://api.www.wondertravelers.com'}/api/auth/oauth/google/callback`,
+    callbackURL: `${process.env.API_BASE_URL || 'https://api.wondertravelers.com'}/api/auth/oauth/google/callback`,
     passReqToCallback: true
   },
   async (req, accessToken, refreshToken, profile, done) => {
@@ -59,7 +59,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
   passport.use('facebook', new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID,
     clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: `${process.env.API_BASE_URL || 'https://api.www.wondertravelers.com'}/api/auth/oauth/facebook/callback`,
+    callbackURL: `${process.env.API_BASE_URL || 'https://api.wondertravelers.com'}/api/auth/oauth/facebook/callback`,
     profileFields: ['id', 'displayName', 'photos', 'emails'],
     passReqToCallback: true
   },
@@ -90,7 +90,7 @@ if (process.env.TWITTER_CLIENT_ID && process.env.TWITTER_CLIENT_SECRET) {
   passport.use('twitter', new TwitterStrategy({
     consumerKey: process.env.TWITTER_CLIENT_ID,
     consumerSecret: process.env.TWITTER_CLIENT_SECRET,
-    callbackURL: `${process.env.API_BASE_URL || 'https://api.www.wondertravelers.com'}/api/auth/oauth/twitter/callback`,
+    callbackURL: `${process.env.API_BASE_URL || 'https://api.wondertravelers.com'}/api/auth/oauth/twitter/callback`,
     includeEmail: true,
     passReqToCallback: true
   },
