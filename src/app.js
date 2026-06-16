@@ -289,7 +289,8 @@ app.use(rateLimit({
       path: req.path,
       method: req.method
     });
-    res.status(options.statusCode).json(options.message);
+    const statusCode = Number.isInteger(options?.statusCode) ? options.statusCode : 429;
+    res.status(statusCode).json(options.message);
   },
 }));
 

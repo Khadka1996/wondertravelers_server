@@ -58,7 +58,8 @@ export const adminActionRateLimiter = rateLimit({
       logger.error('Failed to log admin rate limit audit', { error: auditErr.message });
     }
 
-    res.status(options.statusCode).json(options.message);
+    const statusCode = Number.isInteger(options?.statusCode) ? options.statusCode : 429;
+    res.status(statusCode).json(options.message);
   }
 });
 
@@ -111,7 +112,8 @@ export const adminSensitiveActionRateLimiter = rateLimit({
       logger.error('Failed to log sensitive admin rate limit audit', { error: auditErr.message });
     }
 
-    res.status(options.statusCode).json(options.message);
+    const statusCode = Number.isInteger(options?.statusCode) ? options.statusCode : 429;
+    res.status(statusCode).json(options.message);
   }
 });
 
