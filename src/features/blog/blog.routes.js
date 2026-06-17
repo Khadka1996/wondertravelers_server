@@ -1,6 +1,7 @@
 // src/features/blog/blog.routes.js
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   createBlog,
   getBlogs,
@@ -45,6 +46,16 @@ import path from 'path';
 import fs from 'fs';
 
 const router = express.Router();
+
+// ⚡ NEW: Rate limiter for engagement endpoints (prevent bot abuse)
+const engagementLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per user per 15 minutes
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  message: 'Too many engagement actions, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const BLOG_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'blogs');
 
@@ -205,8 +216,8 @@ router.delete('/:id/comments/:commentId', (req, res, next) => authMiddleware.pro
 
 // ==================== ENGAGEMENT & ACTION ENDPOINTS ====================
 
-// DEBUG: Log like requests before processing
-router.post('/:id/like', (req, res, next) => authMiddleware.protect(req, res, next), likeBlog);
+// ⚡ NEW: Rate-limited like endpoint (prevent bot abuse)
+router.post('/:id/like', (req, res, next) => authMiddleware.protect(req, res, next), engagementLimiter, likeBlog);
 
 // Get blog engagement metrics
 router.get('/:id/engagement', getBlogEngagement);

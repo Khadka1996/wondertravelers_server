@@ -10,6 +10,17 @@ const CACHE_TTL = 3600; // 1 hour
 export const getAdsByPosition = async (req, res) => {
   try {
     const { position } = req.params;
+    const cacheKey = `advertisements:position:${position}`;
+
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      return res
+        .set('Cache-Control', 'public, max-age=300')
+        .set('Pragma', 'public')
+        .set('Expires', new Date(Date.now() + 300000).toUTCString())
+        .set('X-Cache', 'HIT')
+        .json(cachedResult);
+    }
 
     // Validate position
     const validPositions = [
@@ -37,10 +48,12 @@ export const getAdsByPosition = async (req, res) => {
 
     const result = { success: true, position, count: ads.length, advertisements: ads };
 
+    await cache.set(cacheKey, result, CACHE_TTL);
+
     res
-      .set('Cache-Control', 'no-cache, no-store, must-revalidate')
-      .set('Pragma', 'no-cache')
-      .set('Expires', '0')
+      .set('Cache-Control', 'public, max-age=300')
+      .set('Pragma', 'public')
+      .set('Expires', new Date(Date.now() + 300000).toUTCString())
       .set('X-Cache', 'MISS')
       .json(result);
   } catch (error) {

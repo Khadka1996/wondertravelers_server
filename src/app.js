@@ -253,7 +253,8 @@ app.use(cors({
       callback(null, true);
     } else {
       logger.warn('CORS blocked origin', { origin, allowedOrigins });
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      // Don't expose origin details to client - log server-side only
+      callback(new Error('Request origin not allowed'));
     }
   },
   credentials: true, // Critical: Allow credentials (cookies, HttpOnly cookies, etc.)
@@ -542,10 +543,13 @@ app.use((err, req, res, next) => {
     ip: req.ip
   });
   
+  // In production, hide internal error details; in dev, show them for debugging
+  const message = isProd ? 'Internal server error' : (err.message || 'Internal server error');
+  
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal server error',
-    ...(!isProd && { stack: err.stack })
+    message,
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
 });
 

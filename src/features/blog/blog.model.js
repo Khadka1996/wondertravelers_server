@@ -218,11 +218,12 @@ const blogSchema = new Schema(
 // ==================== INDEXES ====================
 blogSchema.index({ slug: 1 }, { unique: true });
 blogSchema.index({ status: 1, publishedAt: -1 });
+blogSchema.index({ status: 1, type: 1, publishedAt: -1 }); // ⚡ NEW: Composite for blog/news queries
 blogSchema.index({ tags: 1, status: 1, publishedAt: -1 });
 blogSchema.index({ author: 1, status: 1, publishedAt: -1 });
 blogSchema.index({ category: 1, status: 1, publishedAt: -1 });
 blogSchema.index({ isFeatured: 1, status: 1, publishedAt: -1 });
-blogSchema.index({ isBreaking: 1, publishedAt: -1 });
+blogSchema.index({ isBreaking: 1, status: 1, publishedAt: -1 }); // ⚡ FIXED: Added status filter
 blogSchema.index({ views: -1, publishedAt: -1 }); // For trending
 blogSchema.index({ publishedAt: -1 }); // For recent
 blogSchema.index({ scheduledFor: 1, status: 1 }); // For scheduled posts
@@ -347,18 +348,39 @@ blogSchema.post('save', async function() {
       }
     }
 
-    // 🚀 CACHE INVALIDATION on save
+    // 🚀 CACHE INVALIDATION on save (⚡ OPTIMIZED: Granular invalidation)
     try {
       const cacheModule = await import('../../utils/cache.util.js');
       const cache = cacheModule.default;
       
-      await cache.delPattern('blogs:*');
-      await cache.delPattern(`blog:${doc._id}:*`);
-      await cache.delPattern(`blogs:category:${doc.category}:*`);
-      await cache.delPattern(`blogs:author:${doc.author}:*`);
-      await cache.delPattern('blogs:featured:*');
-      await cache.delPattern('blogs:popular:*');
-      await cache.delPattern(`blog:${doc.slug}:*`);
+      // Only invalidate specific blog caches
+      await cache.del(`blog:${doc._id}`);
+      await cache.del(`blog:${doc.slug}`);
+      
+      // Invalidate category list cache only
+      if (doc.category) {
+        await cache.delPattern(`blogs:category:${doc.category}:*`);
+      }
+      
+      // Invalidate author list cache only
+      if (doc.author) {
+        await cache.delPattern(`blogs:author:${doc.author}:*`);
+      }
+      
+      // Only invalidate public/featured caches if status changed
+      if (doc.isModified('status')) {
+        if (doc.status === 'published') {
+          await cache.delPattern('blogs:recent:*');
+          await cache.delPattern('blogs:trending:*');
+          await cache.delPattern('blogs:popular:*');
+        }
+        if (doc.isFeatured) {
+          await cache.del('blogs:featured:limit:*');
+        }
+        if (doc.isBreaking) {
+          await cache.del('blogs:breaking:*');
+        }
+      }
     } catch (cacheErr) {
       console.warn('Cache invalidation failed:', cacheErr.message);
     }
@@ -367,12 +389,18 @@ blogSchema.post('save', async function() {
   }
 });
 
-// Cache invalidation on delete
+// Cache invalidation on delete - ⚡ OPTIMIZED: Granular invalidation
 blogSchema.post('deleteOne', async function() {
   try {
     const cacheModule = await import('../../utils/cache.util.js');
     const cache = cacheModule.default;
-    await cache.delPattern('blogs:*');
+    // Only invalidate affected caches, not global blogs:*
+    const doc = this;
+    await cache.del(`blog:${doc._id}`);
+    await cache.delPattern(`blogs:category:${doc.category}:*`);
+    await cache.delPattern(`blogs:author:${doc.author}:*`);
+    await cache.delPattern('blogs:recent:*');
+    await cache.delPattern('blogs:trending:*');
   } catch (err) {
     console.warn('Cache invalidation on delete failed:', err.message);
   }
@@ -403,29 +431,41 @@ blogSchema.methods.getRelativeTime = function() {
 };
 
 blogSchema.methods.incrementViews = async function() {
-  this.views += 1;
-  await this.save();
-  return this.views;
+  // ⚡ OPTIMIZED: Use atomic $inc operator
+  const updated = await this.constructor.findByIdAndUpdate(
+    this._id,
+    { $inc: { views: 1 } },
+    { new: true }
+  ).select('views');
+  return updated?.views || this.views;
 };
 
 blogSchema.methods.toggleLike = async function(userId) {
-  const index = this.likes.indexOf(userId);
-  if (index === -1) {
-    this.likes.push(userId);
-  } else {
-    this.likes.splice(index, 1);
-  }
-  await this.save();
+  // ⚡ OPTIMIZED: Use atomic array operations
+  const isLiked = this.likes.some(id => id.toString() === userId.toString());
+  
+  const updated = await this.constructor.findByIdAndUpdate(
+    this._id,
+    isLiked 
+      ? { $pull: { likes: userId }, $inc: { likesCount: -1 } }
+      : { $push: { likes: userId }, $inc: { likesCount: 1 } },
+    { new: true }
+  ).select('likes likesCount');
+  
   return {
-    liked: index === -1,
-    likesCount: this.likes.length
+    liked: !isLiked,
+    likesCount: updated?.likesCount || this.likesCount
   };
 };
 
 blogSchema.methods.incrementShares = async function() {
-  this.shares += 1;
-  await this.save();
-  return this.shares;
+  // ⚡ OPTIMIZED: Use atomic $inc operator
+  const updated = await this.constructor.findByIdAndUpdate(
+    this._id,
+    { $inc: { shares: 1 } },
+    { new: true }
+  ).select('shares');
+  return updated?.shares || this.shares;
 };
 
 // ========== NEW ENGAGEMENT METHODS ==========
@@ -465,12 +505,15 @@ blogSchema.methods.getEngagementMetrics = function() {
 };
 
 /**
- * Increment view count (for analytics)
+ * Increment view count (for analytics) - ⚡ OPTIMIZED: Atomic increment
  */
 blogSchema.methods.recordView = async function() {
-  this.views += 1;
-  await this.save();
-  return this.views;
+  const updated = await this.constructor.findByIdAndUpdate(
+    this._id,
+    { $inc: { views: 1 } },
+    { new: true }
+  ).select('views');
+  return updated?.views || this.views;
 };
 
 /**
@@ -546,7 +589,6 @@ blogSchema.methods.getRelatedPosts = async function(limit = 3) {
     .lean();
 };
 
-// ==================== STATIC METHODS ====================
 blogSchema.statics.getFeaturedPosts = async function(limit = 5) {
   return this.find({ 
     isFeatured: true, 
@@ -556,6 +598,27 @@ blogSchema.statics.getFeaturedPosts = async function(limit = 5) {
     .populate('author', 'name profileImage')
     .populate('category', 'name slug')
     .sort({ publishedAt: -1 })
+    .limit(limit)
+    .lean();
+};
+
+// ⚡ NEW: Get similar blogs by ID (optimized single query)
+blogSchema.statics.getSimilarBlogs = async function(id, limit = 5) {
+  const blog = await this.findById(id).select('category tags');
+  if (!blog) throw new Error('Blog not found');
+  
+  return this.find({
+    _id: { $ne: id },
+    status: 'published',
+    $or: [
+      { category: blog.category },
+      { tags: { $in: blog.tags?.slice(0, 5) || [] } }
+    ]
+  })
+    .select('title slug excerpt featuredImage author publishedAt views')
+    .populate('author', 'name profileImage')
+    .populate('category', 'name slug')
+    .sort({ publishedAt: -1, views: -1 })
     .limit(limit)
     .lean();
 };
@@ -787,48 +850,90 @@ commentSchema.methods.addReply = async function(replyData) {
 };
 
 commentSchema.statics.getCommentsForBlog = async function(blogId, page = 1, limit = 20) {
-  const query = { 
+  // ⚡ OPTIMIZED: Single aggregation pipeline instead of 2 queries (N+1 fix)
+  const skip = (page - 1) * limit;
+  
+  const comments = await this.aggregate([
+    // Match top-level comments
+    { 
+      $match: { 
+        blog: new mongoose.Types.ObjectId(blogId),
+        parentComment: null,
+        status: 'active' 
+      }
+    },
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+    // Lookup and attach replies in one go
+    {
+      $lookup: {
+        from: 'comments',
+        let: { commentId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$parentComment', '$$commentId'] },
+              status: 'active'
+            }
+          },
+          { $sort: { createdAt: 1 } },
+          {
+            $lookup: {
+              from: 'authors',
+              localField: 'author',
+              foreignField: '_id',
+              as: 'author'
+            }
+          },
+          { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 1,
+              content: 1,
+              createdAt: 1,
+              likesCount: 1,
+              'author.name': 1,
+              'author.profileImage': 1,
+              'author.isVerified': 1
+            }
+          }
+        ],
+        as: 'replies'
+      }
+    },
+    // Lookup author for main comment
+    {
+      $lookup: {
+        from: 'authors',
+        localField: 'author',
+        foreignField: '_id',
+        as: 'author'
+      }
+    },
+    { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        content: 1,
+        createdAt: 1,
+        likesCount: 1,
+        repliesCount: 1,
+        replies: 1,
+        'author.name': 1,
+        'author.profileImage': 1,
+        'author.isVerified': 1
+      }
+    }
+  ]);
+
+  // Get total count
+  const total = await this.countDocuments({ 
     blog: blogId, 
     parentComment: null,
     status: 'active' 
-  };
-  
-  const [comments, total] = await Promise.all([
-    this.find(query)
-      .populate('author', 'name profileImage isVerified')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    
-    this.countDocuments(query)
-  ]);
-  
-  // Get replies for these comments
-  const commentIds = comments.map(c => c._id);
-  const replies = await this.find({
-    parentComment: { $in: commentIds },
-    status: 'active'
-  })
-    .populate('author', 'name profileImage isVerified')
-    .sort({ createdAt: 1 })
-    .lean();
-  
-  // Group replies by parent
-  const repliesByParent = {};
-  replies.forEach(reply => {
-    const parentId = reply.parentComment.toString();
-    if (!repliesByParent[parentId]) {
-      repliesByParent[parentId] = [];
-    }
-    repliesByParent[parentId].push(reply);
   });
-  
-  // Attach replies to comments
-  comments.forEach(comment => {
-    comment.replies = repliesByParent[comment._id.toString()] || [];
-  });
-  
+
   return {
     comments,
     pagination: {

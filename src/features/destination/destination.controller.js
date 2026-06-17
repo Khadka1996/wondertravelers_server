@@ -15,34 +15,44 @@ export const getDestinations = async (req, res) => {
   try {
     const { category, skip = 0, limit = 12, sort = '-createdAt', search } = req.query;
 
-    // Build query
-    let query = Destination.find({ published: true });
-    
-    if (category && category !== 'All') {
-      query = query.where('category').equals(category);
+    const normalizedCategory = category && category !== 'All' ? category : 'All';
+    const normalizedSearch = search && search.trim() ? search.trim() : '';
+    const cacheKey = `destinations:public:category:${normalizedCategory}:skip:${skip}:limit:${limit}:sort:${sort}:search:${normalizedSearch}`;
+
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      return res
+        .set('Cache-Control', 'public, max-age=300')
+        .set('Pragma', 'public')
+        .set('Expires', new Date(Date.now() + 300000).toUTCString())
+        .set('X-Cache', 'HIT')
+        .json(cachedResult);
     }
 
-    // Add search filter
-    if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i'); // Case-insensitive search
-      query = query.where('$or', [
-        { name: searchRegex },
-        { shortDesc: searchRegex },
-        { longDesc: searchRegex },
-        { category: searchRegex }
-      ]);
-      console.log(`🔍 Search filter applied for: "${search}"`);
+    // Build query
+    const filters = { published: true };
+    
+    if (category && category !== 'All') {
+      filters.category = category;
+    }
+
+    // Add search filter - ⚡ OPTIMIZED: Use MongoDB text search instead of regex
+    if (normalizedSearch) {
+      // Use text search for better performance
+      filters.$text = { $search: normalizedSearch };
+      console.log(`🔍 Text search applied for: "${normalizedSearch}"`);
     }
 
     // Get total count
-    const total = await Destination.countDocuments(query);
+    const total = await Destination.countDocuments(filters);
 
-    // Execute query
-    const destinations = await query
+    // Execute query - ⚡ OPTIMIZED: Added .lean() for memory efficiency
+    const destinations = await Destination.find(filters)
       .select('name slug category shortDesc image rating reviewCount featured _id')
       .skip(parseInt(skip))
       .limit(parseInt(limit))
       .sort(sort)
+      .hint(normalizedSearch ? { _fts: 'text', _ftsx: 1 } : { createdAt: -1 }) // ⚡ NEW: Help query planner
       .lean();
 
     const result = {
@@ -55,10 +65,12 @@ export const getDestinations = async (req, res) => {
 
     console.log(`✅ Destinations fetched: ${destinations.length} out of ${total} total`);
 
+    await cache.set(cacheKey, result, CACHE_TTL);
+
     res
-      .set('Cache-Control', 'no-cache, no-store, must-revalidate')
-      .set('Pragma', 'no-cache')
-      .set('Expires', '0')
+      .set('Cache-Control', 'public, max-age=300')
+      .set('Pragma', 'public')
+      .set('Expires', new Date(Date.now() + 300000).toUTCString())
       .set('X-Cache', 'MISS')
       .json(result);
   } catch (error) {
@@ -75,6 +87,17 @@ export const getDestinations = async (req, res) => {
  */
 export const getFeaturedDestinations = async (req, res) => {
   try {
+    const cacheKey = 'destinations:featured';
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      return res
+        .set('Cache-Control', 'public, max-age=600')
+        .set('Pragma', 'public')
+        .set('Expires', new Date(Date.now() + 600000).toUTCString())
+        .set('X-Cache', 'HIT')
+        .json(cachedResult);
+    }
+
     const destinations = await Destination.find({
       published: true,
       featured: true
@@ -90,10 +113,12 @@ export const getFeaturedDestinations = async (req, res) => {
       destinations
     };
 
+    await cache.set(cacheKey, result, FEATURED_CACHE_TTL);
+
     res
-      .set('Cache-Control', 'no-cache, no-store, must-revalidate')
-      .set('Pragma', 'no-cache')
-      .set('Expires', '0')
+      .set('Cache-Control', 'public, max-age=600')
+      .set('Pragma', 'public')
+      .set('Expires', new Date(Date.now() + 600000).toUTCString())
       .set('X-Cache', 'MISS')
       .json(result);
   } catch (error) {
@@ -109,17 +134,33 @@ export const getFeaturedDestinations = async (req, res) => {
  */
 export const getCategories = async (req, res) => {
   try {
+    const cacheKey = 'destinations:categories';
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      return res
+        .set('Cache-Control', 'public, max-age=3600')
+        .set('Pragma', 'public')
+        .set('Expires', new Date(Date.now() + 3600000).toUTCString())
+        .set('X-Cache', 'HIT')
+        .json(cachedResult);
+    }
+
     const categories = await Destination.distinct('category', { published: true });
     const sorted = categories.sort();
 
+    const result = {
+      success: true,
+      categories: sorted
+    };
+
+    await cache.set(cacheKey, result, 3600);
+
     res
-      .set('Cache-Control', 'no-cache, no-store, must-revalidate')
-      .set('Pragma', 'no-cache')
-      .set('Expires', '0')
-      .json({
-        success: true,
-        categories: sorted
-      });
+      .set('Cache-Control', 'public, max-age=3600')
+      .set('Pragma', 'public')
+      .set('Expires', new Date(Date.now() + 3600000).toUTCString())
+      .set('X-Cache', 'MISS')
+      .json(result);
   } catch (error) {
     logger.error('Get categories error:', { error: error.message });
     res.status(500).json({ success: false, message: error.message });
@@ -278,7 +319,7 @@ export const updateDestination = async (req, res) => {
       'name', 'category', 'shortDesc', 'longDesc', 'image',
       'rating', 'reviewCount', 'gallery', 'activities',
       'difficulty', 'duration', 'altitude', 'location',
-      'bestToVisit', 'featured', 'published', 'seo'
+      'bestTime', 'bestToVisit', 'routes', 'featured', 'published', 'seo'
     ];
 
     const updateData = {};

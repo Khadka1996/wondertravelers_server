@@ -7,6 +7,7 @@ const destinationSchema = new mongoose.Schema(
       required: [true, 'Destination name is required'],
       trim: true,
       unique: true,
+      sparse: true, // ⚡ NEW: Allow multiple null values
       maxlength: [100, 'Name cannot exceed 100 characters']
     },
 
@@ -14,6 +15,7 @@ const destinationSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      sparse: true, // ⚡ NEW: Allow multiple null values
       lowercase: true,
       trim: true
     },
@@ -77,10 +79,31 @@ const destinationSchema = new mongoose.Schema(
       }
     },
 
+    bestTime: {
+      type: String, // e.g., "October to November", "March to May"
+      trim: true
+    },
+
     bestToVisit: {
       months: [String],
       description: String
     },
+
+    routes: [
+      {
+        name: String, // e.g., "Mountain Trek", "Cultural Circuit"
+        startingPoint: String, // e.g., "Kathmandu"
+        endingPoint: String, // e.g., "Lumbini"
+        waypoints: [String], // e.g., ["Chitwan", "Pokhara"]
+        distance: Number, // in km
+        estimatedDays: Number,
+        description: String,
+        difficulty: {
+          type: String,
+          enum: ['Easy', 'Moderate', 'Challenging', 'Extreme']
+        }
+      }
+    ],
 
     activities: [
       {

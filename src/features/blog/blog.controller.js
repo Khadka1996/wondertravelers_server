@@ -430,6 +430,19 @@ export const getBlogsByAuthorName = async (req, res) => {
 export const getBlogs = async (req, res) => {
   try {
     const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
+    const cacheKey = `blogs:public:page:${page}:limit:${limit}`;
+
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      setCacheHeaders(res, 300);
+      res.set('X-Cache', 'HIT');
+      return res.status(200).json({
+        success: true,
+        data: cachedResult.data,
+        pagination: cachedResult.pagination,
+        cached: true
+      });
+    }
 
     const [blogs, totalBlogs] = await Promise.all([
       Blog.find({ status: 'published', type: 'blog' })
@@ -452,10 +465,7 @@ export const getBlogs = async (req, res) => {
     }));
 
     const totalPages = Math.ceil(totalBlogs / limit);
-    setCacheHeaders(res, 300);
-
-    res.status(200).json({
-      success: true,
+    const payload = {
       data: enrichedBlogs,
       pagination: {
         page,
@@ -465,6 +475,17 @@ export const getBlogs = async (req, res) => {
         hasNext: page < totalPages,
         hasPrev: page > 1
       }
+    };
+
+    await cache.set(cacheKey, payload, 300);
+    setCacheHeaders(res, 300);
+    res.set('X-Cache', 'MISS');
+
+    res.status(200).json({
+      success: true,
+      data: payload.data,
+      pagination: payload.pagination,
+      cached: false
     });
   } catch (error) {
     console.error('Error in getBlogs:', error);
@@ -478,6 +499,19 @@ export const getBlogs = async (req, res) => {
 export const getNews = async (req, res) => {
   try {
     const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
+    const cacheKey = `blogs:news:page:${page}:limit:${limit}`;
+
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      setCacheHeaders(res, 300);
+      res.set('X-Cache', 'HIT');
+      return res.status(200).json({
+        success: true,
+        data: cachedResult.data,
+        pagination: cachedResult.pagination,
+        cached: true
+      });
+    }
 
     const [news, totalNews] = await Promise.all([
       Blog.find({ status: 'published', type: 'news' })
@@ -500,10 +534,7 @@ export const getNews = async (req, res) => {
     }));
 
     const totalPages = Math.ceil(totalNews / limit);
-    setCacheHeaders(res, 300);
-
-    res.status(200).json({
-      success: true,
+    const payload = {
       data: enrichedNews,
       pagination: {
         page,
@@ -513,6 +544,17 @@ export const getNews = async (req, res) => {
         hasNext: page < totalPages,
         hasPrev: page > 1
       }
+    };
+
+    await cache.set(cacheKey, payload, 300);
+    setCacheHeaders(res, 300);
+    res.set('X-Cache', 'MISS');
+
+    res.status(200).json({
+      success: true,
+      data: payload.data,
+      pagination: payload.pagination,
+      cached: false
     });
   } catch (error) {
     console.error('Error in getNews:', error);
@@ -583,17 +625,20 @@ export const getBlogById = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid blog ID format' });
     }
 
+    // ⚡ OPTIMIZED: Use .lean() for read-only query
     const blog = await Blog.findById(id)
       .populate('author', 'name profileImage')
-      .populate('category', 'name slug');
+      .populate('category', 'name slug')
+      .lean();
 
     if (!blog) {
       return res.status(404).json({ success: false, error: 'Blog not found' });
     }
 
-    // Increment views
-    blog.views = (blog.views || 0) + 1;
-    await blog.save();
+    // ⚡ OPTIMIZED: Atomic view increment (fire-and-forget, non-blocking)
+    Blog.findByIdAndUpdate(id, { $inc: { views: 1 } }).exec().catch(err => 
+      console.error('View increment failed:', err.message)
+    );
 
     setCacheHeaders(res, 60);
 
