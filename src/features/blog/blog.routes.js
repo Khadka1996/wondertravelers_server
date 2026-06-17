@@ -32,6 +32,7 @@ import {
   getEngagementTrending,
   getMostViewed,
   getMostLiked,
+  incrementBlogView,
 } from './blog.controller.js';
 import {
   getCommentsForBlog,
@@ -218,6 +219,9 @@ router.delete('/:id/comments/:commentId', (req, res, next) => authMiddleware.pro
 
 // ⚡ NEW: Rate-limited like endpoint (prevent bot abuse)
 router.post('/:id/like', (req, res, next) => authMiddleware.protect(req, res, next), engagementLimiter, likeBlog);
+
+// ⚡ NEW: Increment blog view count (public, rate-limited by engagement limiter)
+router.post('/:id/view', engagementLimiter, incrementBlogView);
 
 // Get blog engagement metrics
 router.get('/:id/engagement', getBlogEngagement);

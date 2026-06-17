@@ -1513,3 +1513,52 @@ export const getMostLiked = async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch most liked blogs.' });
   }
 };
+
+/**
+ * @desc   Increment view count for a blog post
+ * @route  POST /api/blogs/:id/view
+ * @access Public
+ * @param  {string} id - Blog post ID
+ * @returns {Object} Updated blog with new view count
+ */
+export const incrementBlogView = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Blog ID is required' });
+    }
+
+    // ⚡ OPTIMIZED: Use atomic $inc operator to prevent race conditions
+    const blog = await Blog.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } },
+      { new: true }
+    ).select('_id views title slug');
+
+    if (!blog) {
+      return res.status(404).json({ success: false, message: 'Blog not found' });
+    }
+
+    // Invalidate cache for trending/engagement views
+    await cache.del(`blogs:trending`);
+    await cache.del(`blogs:engagement:trending`);
+    await cache.del(`blogs:mostviewed:10:30`);
+    await cache.del(`blogs:slug:${blog.slug}`);
+
+    console.log(`✅ View incremented for blog "${blog.title}" - Total views: ${blog.views}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'View count incremented',
+      data: {
+        _id: blog._id,
+        views: blog.views,
+        title: blog.title
+      }
+    });
+  } catch (error) {
+    console.error('Error incrementing blog view:', error);
+    res.status(500).json({ success: false, message: 'Failed to increment view count' });
+  }
+};

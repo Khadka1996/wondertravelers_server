@@ -38,13 +38,25 @@ export const getDestinations = async (req, res) => {
 
     // Add search filter - ⚡ OPTIMIZED: Use MongoDB text search instead of regex
     if (normalizedSearch) {
-      // Use text search for better performance
-      filters.$text = { $search: normalizedSearch };
-      console.log(`🔍 Text search applied for: "${normalizedSearch}"`);
+      try {
+        // Use text search for better performance
+        filters.$text = { $search: normalizedSearch };
+        console.log(`🔍 Text search applied for: "${normalizedSearch}"`);
+      } catch (e) {
+        console.warn(`⚠️ Text search failed, falling back to regex:`, e.message);
+        // Fallback to regex if text search fails
+        filters.$or = [
+          { name: { $regex: normalizedSearch, $options: 'i' } },
+          { shortDesc: { $regex: normalizedSearch, $options: 'i' } }
+        ];
+      }
     }
+
+    console.log(`🔎 Query filters:`, filters);
 
     // Get total count
     const total = await Destination.countDocuments(filters);
+    console.log(`📊 Total destinations matching filter:`, total);
 
     // Execute query - ⚡ OPTIMIZED: Added .lean() for memory efficiency
     const destinations = await Destination.find(filters)
@@ -52,8 +64,12 @@ export const getDestinations = async (req, res) => {
       .skip(parseInt(skip))
       .limit(parseInt(limit))
       .sort(sort)
-      .hint(normalizedSearch ? { _fts: 'text', _ftsx: 1 } : { createdAt: -1 }) // ⚡ NEW: Help query planner
       .lean();
+
+    console.log(`✅ Destinations fetched: ${destinations.length} out of ${total} total`);
+    if (destinations.length > 0) {
+      console.log(`First destination:`, destinations[0]);
+    }
 
     const result = {
       success: true,
@@ -63,7 +79,7 @@ export const getDestinations = async (req, res) => {
       hasMore: parseInt(skip) + parseInt(limit) < total
     };
 
-    console.log(`✅ Destinations fetched: ${destinations.length} out of ${total} total`);
+    console.log(`📤 Sending response:`, { success: true, count: destinations.length, total });
 
     await cache.set(cacheKey, result, CACHE_TTL);
 
