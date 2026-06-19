@@ -56,7 +56,7 @@ export const getRecentBlogs = async (req, res) => {
       .select('title slug excerpt featuredImage author publishedAt views readingTime category')
       .populate('author', 'name profileImage bio isVerified')
       .populate('category', 'name slug color')
-      .sort({ publishedAt: -1 })
+      .sort({ publishedAt: -1, createdAt: -1 })
       .limit(parsedLimit)
       .lean(true);  // ⚡ Optimized: returns plain JS objects, not Mongoose docs
 
@@ -192,7 +192,7 @@ export const getBlogsByCategory = async (req, res) => {
         .select('title slug excerpt featuredImage author category publishedAt views readingTime')
         .populate('author', 'name profileImage isVerified')
         .populate('category', 'name slug color')
-        .sort({ publishedAt: -1 })
+        .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(true)  // ⚡ Optimized: plain JS objects, no overhead
@@ -449,7 +449,7 @@ export const getBlogs = async (req, res) => {
         .select('title slug content subHeading featuredImage author category views likesCount publishedAt status type')
         .populate('author', 'name profileImage')
         .populate('category', 'name slug')
-        .sort({ publishedAt: -1 })
+        .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -518,7 +518,7 @@ export const getNews = async (req, res) => {
         .select('title slug content subHeading featuredImage author category views likesCount publishedAt status type')
         .populate('author', 'name profileImage')
         .populate('category', 'name slug')
-        .sort({ publishedAt: -1 })
+        .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -1000,7 +1000,7 @@ export const getModerationBlogs = async (req, res) => {
         .select('title slug excerpt featuredImage author category publishedAt views readingTime')
         .populate('author', 'name profileImage isVerified')
         .populate('category', 'name slug color')
-        .sort({ publishedAt: -1 })
+        .sort({ publishedAt: -1, createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(true),  // ⚡ Optimized for moderation page listing
