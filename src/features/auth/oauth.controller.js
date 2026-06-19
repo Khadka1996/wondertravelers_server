@@ -52,6 +52,8 @@ export const googleOAuthCallback = async (req, res, next) => {
     // Set cookies
     res.cookie('accessToken', accessToken, ACCESS_TOKEN_OPTIONS);
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    res.cookie('access_token', accessToken, ACCESS_TOKEN_OPTIONS);
+    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
 
     logger.info('Google OAuth login successful', { 
       userId: user._id, 
@@ -95,6 +97,8 @@ export const facebookOAuthCallback = async (req, res, next) => {
     // Set cookies
     res.cookie('accessToken', accessToken, ACCESS_TOKEN_OPTIONS);
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    res.cookie('access_token', accessToken, ACCESS_TOKEN_OPTIONS);
+    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
 
     logger.info('Facebook OAuth login successful', { 
       userId: user._id, 
@@ -138,6 +142,8 @@ export const twitterOAuthCallback = async (req, res, next) => {
     // Set cookies
     res.cookie('accessToken', accessToken, ACCESS_TOKEN_OPTIONS);
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    res.cookie('access_token', accessToken, ACCESS_TOKEN_OPTIONS);
+    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
 
     logger.info('Twitter OAuth login successful', { 
       userId: user._id, 

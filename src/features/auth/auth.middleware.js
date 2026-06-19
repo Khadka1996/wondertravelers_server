@@ -63,9 +63,15 @@ const getCookieClearOptions = (req) => {
 const clearAuthCookies = (req, res) => {
   const clearOptions = getCookieClearOptions(req);
   res.clearCookie('access_token', clearOptions);
+  res.clearCookie('accessToken', clearOptions);
   res.clearCookie('refresh_token', clearOptions);
+  res.clearCookie('refreshToken', clearOptions);
   res.clearCookie('fingerprint', clearOptions);
 };
+
+const getAccessTokenFromCookies = (cookies = {}) => cookies.access_token || cookies.accessToken || null;
+
+const getRefreshTokenFromCookies = (cookies = {}) => cookies.refresh_token || cookies.refreshToken || null;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -110,8 +116,10 @@ export const authMiddleware = {
       let tokenSource = 'none';
       
       // Priority 1: HttpOnly cookie (most secure)
-      if (req.cookies?.access_token) {
-        token = req.cookies.access_token;
+      const accessTokenCookie = getAccessTokenFromCookies(req.cookies);
+
+      if (accessTokenCookie) {
+        token = accessTokenCookie;
         tokenSource = 'cookie';
         logger.debug('Using access token from cookie');
       }
@@ -162,7 +170,7 @@ export const authMiddleware = {
         decoded = jwt.verify(token, JWT_SECRET);
       } catch (err) {
         // Clear invalid cookie - try all possible paths
-        if (req.cookies?.access_token) {
+        if (getAccessTokenFromCookies(req.cookies)) {
           clearAuthCookies(req, res);
         }
         
@@ -486,7 +494,7 @@ export const authMiddleware = {
    */
   async protectCookiesOnly(req, res, next) {
     try {
-      const token = req.cookies?.access_token;
+      const token = getAccessTokenFromCookies(req.cookies);
       
       if (!token) {
         logger.warn('Cookie-based authentication required but no cookie found', {
@@ -577,7 +585,7 @@ export const authMiddleware = {
    */
   async handleTokenRefresh(req, res, next) {
     try {
-      const refreshToken = req.cookies?.refresh_token;
+      const refreshToken = getRefreshTokenFromCookies(req.cookies);
       
       if (!refreshToken) {
         logSecurityAudit({
@@ -600,8 +608,10 @@ export const authMiddleware = {
       const tokens = await authService.refreshToken(refreshToken);
       // Set new tokens in cookies
       res.cookie('access_token', tokens.accessToken, getCookieOptions(req, { maxAge: ACCESS_COOKIE_MAX_AGE_MS }));
+      res.cookie('accessToken', tokens.accessToken, getCookieOptions(req, { maxAge: ACCESS_COOKIE_MAX_AGE_MS }));
       
       res.cookie('refresh_token', tokens.refreshToken, getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }));
+      res.cookie('refreshToken', tokens.refreshToken, getCookieOptions(req, { maxAge: REFRESH_COOKIE_MAX_AGE_MS }));
 
       // Update fingerprint (optional)
       const fingerprint = authService.generateFingerprint(req);
@@ -621,6 +631,7 @@ export const authMiddleware = {
 
       // Set the new access token in the request for the protect middleware
       req.cookies.access_token = tokens.accessToken;
+      req.cookies.accessToken = tokens.accessToken;
       
       // Retry authentication with new token
       await this.protect(req, res, next);
