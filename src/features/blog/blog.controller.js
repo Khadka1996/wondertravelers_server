@@ -518,7 +518,7 @@ export const getNews = async (req, res) => {
         .select('title slug content subHeading featuredImage author category views likesCount publishedAt status type')
         .populate('author', 'name profileImage')
         .populate('category', 'name slug')
-        .sort({ publishedAt: -1, createdAt: -1 })
+        .sort({ createdAt: -1, updatedAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
