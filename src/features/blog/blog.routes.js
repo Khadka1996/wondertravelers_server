@@ -1,7 +1,7 @@
 // src/features/blog/blog.routes.js
 
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import {
   createBlog,
   getBlogs,
@@ -52,7 +52,7 @@ const router = express.Router();
 const engagementLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // 100 requests per user per 15 minutes
-  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req, res),
   message: 'Too many engagement actions, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
