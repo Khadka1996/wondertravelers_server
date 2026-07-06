@@ -22,9 +22,19 @@ const sanitizePagination = (page, limit, maxLimit = 50) => {
   return { page: sanitizedPage, limit: sanitizedLimit, skip };
 };
 
+const normalizeSortValue = (sortBy, fallback = 'latest') => {
+  const allowedSorts = ['latest', 'trending', 'mostViewed', 'mostLiked', 'oldest'];
+  return allowedSorts.includes(sortBy) ? sortBy : fallback;
+};
+
+const getListQueryHint = (filter) => {
+  if (filter.category) {
+    return { category: 1, status: 1, publishedAt: -1 };
+  }
+  return { status: 1, type: 1, publishedAt: -1 };
+};
+
 /**
- * 
- 
  * Build cache control headers
  */
 const setCacheHeaders = (res, duration = 60) => {
@@ -32,6 +42,53 @@ const setCacheHeaders = (res, duration = 60) => {
     'Cache-Control': `public, max-age=${duration}`,
     'Expires': new Date(Date.now() + duration * 1000).toUTCString()
   });
+};
+
+/**
+ * Invalidate all related blog/news cache entries
+ * Call this when a blog/news is created, updated, published, or deleted
+ */
+const invalidateBlogCache = async (type = 'both') => {
+  try {
+    console.log(`🔄 Invalidating ${type} cache...`);
+    
+    // Clear patterns based on type
+    const patterns = [];
+    
+    if (type === 'both' || type === 'blog') {
+      patterns.push(
+        'blogs:public:*',
+        'blogs:recent:*',
+        'blogs:trending:*',
+        'blogs:featured:*'
+      );
+    }
+    
+    if (type === 'both' || type === 'news') {
+      patterns.push(
+        'blogs:news:*',
+        'blogs:breaking:*'
+      );
+    }
+    
+    // Always invalidate author-related caches
+    patterns.push(
+      'author:blogs:*',
+      'category:blogs:*',
+      'blogs:similar:*',
+      'blogs:tag:*'
+    );
+    
+    // Delete all matching patterns
+    for (const pattern of patterns) {
+      await cache.delPattern(pattern);
+    }
+    
+    console.log(`✅ Cache invalidated for: ${type}`);
+  } catch (error) {
+    console.error('❌ Cache invalidation error:', error);
+    // Don't throw - cache invalidation failure shouldn't break the operation
+  }
 };
 
 // ==================== PUBLIC READ METHODS ====================
@@ -427,15 +484,26 @@ export const getBlogsByAuthorName = async (req, res) => {
 };
 
 // Optimized getBlogs - Only return published blogs with proper dates and views
+// Supports both /api/blogs (type=blog) and /api/blogs?type=news queries
 export const getBlogs = async (req, res) => {
   try {
     const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
-    const cacheKey = `blogs:public:page:${page}:limit:${limit}`;
+    const { category, sortBy, type } = req.query;
+    const sortValue = normalizeSortValue(sortBy, 'latest');
+    
+    // Support ?type=news or use default blog type
+    const blogType = type === 'news' ? 'news' : 'blog';
+    
+    // Build cache key with sort, category, and type
+    const cacheKey = `blogs:public:page:${page}:limit:${limit}:sort:${sortValue}:type:${blogType}:cat:${category || 'all'}`;
+
+    console.log(`📢 getBlogs called: page=${page}, limit=${limit}, type=${blogType}, sortBy=${sortValue}, category=${category || 'none'}`);
 
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
-      setCacheHeaders(res, 300);
+      setCacheHeaders(res, 600); // 10 min cache
       res.set('X-Cache', 'HIT');
+      console.log(`✅ Cache HIT for ${cacheKey}`);
       return res.status(200).json({
         success: true,
         data: cachedResult.data,
@@ -444,22 +512,68 @@ export const getBlogs = async (req, res) => {
       });
     }
 
+    // Build filter
+    const filter = { status: 'published', type: blogType };
+    if (category) {
+      filter.category = category;
+    }
+    
+    console.log(`🔍 Fetching ${blogType} from DB with filter:`, filter);
+
+    // Determine sort order
+    let sortOrder;
+    switch(sortValue) {
+      case 'trending':
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        filter.publishedAt = { $gte: sevenDaysAgo };
+        sortOrder = { isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`🔥 Trending sort (${blogType}): ${JSON.stringify(sortOrder)}`);
+        break;
+      case 'mostViewed':
+        sortOrder = { isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`👁️ Most viewed sort (${blogType}): ${JSON.stringify(sortOrder)}`);
+        break;
+      case 'mostLiked':
+        sortOrder = { isFeatured: -1, likesCount: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`❤️ Most liked sort (${blogType}): ${JSON.stringify(sortOrder)}`);
+        break;
+      case 'oldest':
+        sortOrder = { publishedAt: 1, createdAt: 1 };
+        console.log(`📅 Oldest sort (${blogType}): ${JSON.stringify(sortOrder)}`);
+        break;
+      default: // 'latest'
+        sortOrder = { isFeatured: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`⏱️ Latest sort (DEFAULT, ${blogType}): ${JSON.stringify(sortOrder)}`);
+    }
+
+    const queryHint = getListQueryHint(filter);
+
     const [blogs, totalBlogs] = await Promise.all([
-      Blog.find({ status: 'published', type: 'blog' })
-        .select('title slug content subHeading featuredImage author category views likesCount publishedAt status type')
+      Blog.find(filter)
+        .select('title slug subHeading featuredImage author category likesCount views publishedAt status type isFeatured')
         .populate('author', 'name profileImage')
         .populate('category', 'name slug')
-        .sort({ publishedAt: -1, createdAt: -1 })
+        .sort(sortOrder)
+        .hint(queryHint)
         .skip(skip)
         .limit(limit)
         .lean(),
-      Blog.countDocuments({ status: 'published', type: 'blog' })
+      Blog.countDocuments(filter).hint(queryHint)
     ]);
 
-    // Ensure all blogs have proper defaults
+    console.log(`📊 ${blogType.toUpperCase()} fetch result: found ${totalBlogs} total, returning ${blogs.length} items on page ${page}`);
+    
+    // Log first 3 items for debugging
+    if (blogs.length > 0) {
+      console.log(`📋 First 3 ${blogType} items:`);
+      blogs.slice(0, 3).forEach((item, idx) => {
+        console.log(`  ${idx + 1}. "${item.title.substring(0, 40)}..." - published: ${item.publishedAt}, featured: ${item.isFeatured}`);
+      });
+    }
     const enrichedBlogs = blogs.map(blog => ({
       ...blog,
       views: blog.views || 0,
+      likesCount: blog.likesCount || 0,
       publishedAt: blog.publishedAt || new Date(),
       featuredImage: blog.featuredImage || '/photos/default-blog.jpg'
     }));
@@ -477,10 +591,11 @@ export const getBlogs = async (req, res) => {
       }
     };
 
-    await cache.set(cacheKey, payload, 300);
-    setCacheHeaders(res, 300);
+    await cache.set(cacheKey, payload, 600); // 10 min cache
+    setCacheHeaders(res, 600);
     res.set('X-Cache', 'MISS');
 
+    console.log(`✅ ${blogType.toUpperCase()} fetched successfully: returning page ${page} of ${totalPages}`);
     res.status(200).json({
       success: true,
       data: payload.data,
@@ -488,23 +603,31 @@ export const getBlogs = async (req, res) => {
       cached: false
     });
   } catch (error) {
-    console.error('Error in getBlogs:', error);
+    console.error('❌ Error in getBlogs:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch blogs. Please try again.' });
   }
 };
 
 /**
- * Get all published news with pagination
+ * Get all published news with pagination - Optimized for speed and proper arrangement
+ * Priority: Breaking News → Featured → Latest Published
  */
 export const getNews = async (req, res) => {
   try {
-    const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
-    const cacheKey = `blogs:news:page:${page}:limit:${limit}`;
+    const { page, limit, sortBy, category } = req.query;
+    const { page: sanitizedPage, limit: sanitizedLimit, skip: sanitizedSkip } = sanitizePagination(page, limit);
+    const sortValue = normalizeSortValue(sortBy, 'latest');
+    
+    console.log(`📰 getNews called: page=${sanitizedPage}, limit=${sanitizedLimit}, skip=${sanitizedSkip}, sortBy=${sortValue}, category=${category || 'none'}`);
+    
+    // Build cache key with sort and category
+    const cacheKey = `blogs:news:page:${sanitizedPage}:limit:${sanitizedLimit}:sort:${sortValue}:cat:${category || 'all'}`;
 
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
-      setCacheHeaders(res, 300);
+      setCacheHeaders(res, 900); // 15 min cache for news (updated more frequently)
       res.set('X-Cache', 'HIT');
+      console.log(`✅ News cache HIT: returned ${cachedResult.data.length} items`);
       return res.status(200).json({
         success: true,
         data: cachedResult.data,
@@ -513,43 +636,93 @@ export const getNews = async (req, res) => {
       });
     }
 
+    // Build filter
+    const filter = { status: 'published', type: 'news' };
+    if (category) {
+      filter.category = category;
+    }
+
+    console.log(`🔍 Fetching news from DB with filter:`, filter, `skip=${sanitizedSkip}, limit=${sanitizedLimit}`);
+
+    // Determine sort order based on sortValue parameter
+    let sortOrder;
+    switch(sortValue) {
+      case 'trending':
+        // Most viewed recent news (last 7 days)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        filter.publishedAt = { $gte: sevenDaysAgo };
+        sortOrder = { isBreaking: -1, isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`🔥 Trending sort: ${JSON.stringify(sortOrder)}`);
+        break;
+      case 'mostViewed':
+        sortOrder = { isBreaking: -1, isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`👁️ Most viewed sort: ${JSON.stringify(sortOrder)}`);
+        break;
+      case 'mostLiked':
+        sortOrder = { isBreaking: -1, isFeatured: -1, likesCount: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`❤️ Most liked sort: ${JSON.stringify(sortOrder)}`);
+        break;
+      case 'oldest':
+        sortOrder = { publishedAt: 1, createdAt: 1 };
+        console.log(`📅 Oldest sort: ${JSON.stringify(sortOrder)}`);
+        break;
+      default: // 'latest' (default)
+        sortOrder = { isBreaking: -1, isFeatured: -1, publishedAt: -1, createdAt: -1 };
+        console.log(`⏱️ Latest sort (DEFAULT): ${JSON.stringify(sortOrder)}`);
+    }
+
+    const queryHint = getListQueryHint(filter);
+
     const [news, totalNews] = await Promise.all([
-      Blog.find({ status: 'published', type: 'news' })
-        .select('title slug content subHeading featuredImage author category views likesCount publishedAt status type')
+      Blog.find(filter)
+        .select('title slug subHeading featuredImage author category likesCount views publishedAt status type isBreaking isFeatured createdAt')
         .populate('author', 'name profileImage')
         .populate('category', 'name slug')
-        .sort({ createdAt: -1, updatedAt: -1 })
-        .skip(skip)
-        .limit(limit)
+        .sort(sortOrder)
+        .hint(queryHint)
+        .skip(sanitizedSkip)
+        .limit(sanitizedLimit)
         .lean(),
-      Blog.countDocuments({ status: 'published', type: 'news' })
+      Blog.countDocuments(filter).hint(queryHint)
     ]);
+
+    console.log(`📊 News fetch result: found ${totalNews} total, returning ${news.length} items on page ${sanitizedPage}`);
+    
+    // Log first 3 items for debugging
+    if (news.length > 0) {
+      console.log(`📋 First 3 news items:`);
+      news.slice(0, 3).forEach((item, idx) => {
+        console.log(`  ${idx + 1}. "${item.title.substring(0, 40)}..." - published: ${item.publishedAt}, breaking: ${item.isBreaking}, featured: ${item.isFeatured}`);
+      });
+    }
 
     // Ensure all news have proper defaults
     const enrichedNews = news.map(item => ({
       ...item,
       views: item.views || 0,
-      publishedAt: item.publishedAt || new Date(),
+      likesCount: item.likesCount || 0,
+      publishedAt: item.publishedAt || item.createdAt || new Date(),
       featuredImage: item.featuredImage || '/photos/default-blog.jpg'
     }));
 
-    const totalPages = Math.ceil(totalNews / limit);
+    const totalPages = Math.ceil(totalNews / sanitizedLimit);
     const payload = {
       data: enrichedNews,
       pagination: {
-        page,
-        limit,
+        page: sanitizedPage,
+        limit: sanitizedLimit,
         total: totalNews,
         pages: totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
+        hasNext: sanitizedPage < totalPages,
+        hasPrev: sanitizedPage > 1
       }
     };
 
-    await cache.set(cacheKey, payload, 300);
-    setCacheHeaders(res, 300);
+    await cache.set(cacheKey, payload, 900); // 15 min cache
+    setCacheHeaders(res, 900);
     res.set('X-Cache', 'MISS');
 
+    console.log(`✅ News fetched successfully: returning page ${sanitizedPage} of ${totalPages}`);
     res.status(200).json({
       success: true,
       data: payload.data,
@@ -557,7 +730,7 @@ export const getNews = async (req, res) => {
       cached: false
     });
   } catch (error) {
-    console.error('Error in getNews:', error);
+    console.error('❌ Error in getNews:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch news. Please try again.' });
   }
 };
@@ -666,15 +839,14 @@ export const createBlog = async (req, res) => {
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, error: 'Title is required' });
     }
-    if (!subHeading || !subHeading.trim()) {
-      return res.status(400).json({ success: false, error: 'Sub-heading is required' });
-    }
     if (!content || !content.trim()) {
       return res.status(400).json({ success: false, error: 'Content is required' });
     }
     if (!category) {
       return res.status(400).json({ success: false, error: 'Category is required' });
     }
+
+    subHeading = typeof subHeading === 'string' ? subHeading.trim() : '';
 
     // Validate author if provided
     if (req.body.author) {
@@ -747,12 +919,16 @@ export const createBlog = async (req, res) => {
 
     await blog.save();
     
+    // Invalidate cache for new blog/news
+    const contentType = type === 'news' ? 'news' : 'blog';
+    await invalidateBlogCache(contentType);
+    
     // Populate references in response by refetching the document
     const populatedBlog = await Blog.findById(blog._id)
       .populate('author', 'name profileImage bio')
       .populate('category', 'name slug');
 
-    res.status(201).json({ success: true, data: populatedBlog, message: 'Blog created successfully' });
+    res.status(201).json({ success: true, data: populatedBlog, message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} created successfully and cache cleared!` });
   } catch (error) {
     console.error('Error in createBlog:', error.message);
     console.error('Full error stack:', error.stack);
@@ -774,7 +950,11 @@ export const deleteBlog = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Blog not found' });
     }
 
-    res.status(200).json({ success: true, message: 'Blog deleted successfully', data: blog });
+    // Invalidate cache when blog is deleted
+    const contentType = blog.type === 'news' ? 'news' : 'blog';
+    await invalidateBlogCache(contentType);
+
+    res.status(200).json({ success: true, message: 'Blog deleted successfully and cache cleared!', data: blog });
   } catch (error) {
     console.error('Error in deleteBlog:', error);
     res.status(500).json({ success: false, error: 'Failed to delete blog. Please try again.' });
@@ -925,9 +1105,13 @@ export const updateBlog = async (req, res) => {
       .populate('author', 'name profileImage')
       .populate('category', 'name slug');
 
+    // Invalidate cache when blog is updated
+    const contentType = updatedBlog.type === 'news' ? 'news' : 'blog';
+    await invalidateBlogCache(contentType);
+
     res.status(200).json({
       success: true,
-      message: 'Blog updated successfully',
+      message: 'Blog updated successfully and cache cleared!',
       data: updatedBlog
     });
   } catch (error) {
@@ -1264,9 +1448,13 @@ export const publishBlog = async (req, res) => {
 
     await blog.publish();
     
+    // Invalidate cache when blog is published
+    const contentType = blog.type === 'news' ? 'news' : 'blog';
+    await invalidateBlogCache(contentType);
+    
     res.status(200).json({ 
       success: true, 
-      message: 'Blog published successfully',
+      message: 'Blog published successfully and cache cleared!',
       data: blog 
     });
   } catch (error) {
