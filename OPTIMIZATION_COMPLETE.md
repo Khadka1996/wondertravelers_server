@@ -77,11 +77,11 @@ Your **news blog destination backend** has been transformed into a **lightning-f
 ## 📦 Deliverables
 
 ### Code Changes
-✅ `src/features/blog/blog.model.js` - Indexes, cache, atomic methods
-✅ `src/features/blog/blog.controller.js` - Atomic view increment, .lean()
-✅ `src/features/destination/destination.model.js` - Sparse indexes
-✅ `src/features/destination/destination.controller.js` - Text search
-✅ `src/features/blog/blog.routes.js` - Rate limiting
+✅ `server/src/features/blog/blog.model.js` - Indexes, cache, atomic methods
+✅ `server/src/features/blog/blog.controller.js` - Atomic view increment, .lean()
+✅ `server/src/features/destination/destination.model.js` - Sparse indexes
+✅ `server/src/features/destination/destination.controller.js` - Text search
+✅ `server/src/features/blog/blog.routes.js` - Rate limiting
 
 ### Scripts
 ✅ `scripts/verify-optimizations.js` - Verify all 17 optimizations
@@ -147,7 +147,7 @@ npm run start:prod
 ## 🔍 Code Changes Overview
 
 ### Most Critical Fix: Atomic View Increment
-**File**: `src/features/blog/blog.controller.js`
+**File**: `server/src/features/blog/blog.controller.js`
 ```javascript
 // BEFORE: Non-atomic, blocking
 blog.views = (blog.views || 0) + 1;
@@ -159,7 +159,7 @@ Blog.findByIdAndUpdate(id, { $inc: { views: 1 } }).exec();
 **Impact**: Eliminates race conditions, -200ms per request
 
 ### Second Critical Fix: N+1 Query
-**File**: `src/features/blog/blog.model.js`
+**File**: `server/src/features/blog/blog.model.js`
 ```javascript
 // BEFORE: 2 queries
 const comments = await this.find(...)

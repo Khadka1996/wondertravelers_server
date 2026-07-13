@@ -74,7 +74,7 @@ npm run dev
 npm run start:prod
 
 # Production
-NODE_ENV=production ENABLE_CLUSTER=true node src/server.js
+NODE_ENV=production ENABLE_CLUSTER=true node server/src/server.js
 ```
 
 ### 4. **Monitor Performance**
@@ -119,11 +119,11 @@ db.system.profile.find({millis: {$gt: 100}}).count()
 
 ## 🔍 Key Changes by File
 
-### `src/features/blog/blog.controller.js`
+### `server/src/features/blog/blog.controller.js`
 - ✅ Line 620-650: Atomic view increment (fire-and-forget)
 - ✅ Added `.lean()` for memory efficiency
 
-### `src/features/blog/blog.model.js`
+### `server/src/features/blog/blog.model.js`
 - ✅ Line 218-238: Added composite indexes
 - ✅ Line 350-381: Granular cache invalidation
 - ✅ Line 392-407: Optimized deleteOne hook
@@ -131,13 +131,13 @@ db.system.profile.find({millis: {$gt: 100}}).count()
 - ✅ Line 571-588: Added `getSimilarBlogs` static
 - ✅ Line 789-841: Single aggregation for comments
 
-### `src/features/destination/destination.model.js`
+### `server/src/features/destination/destination.model.js`
 - ✅ Line 5-19: Added `sparse: true` on unique fields
 
-### `src/features/destination/destination.controller.js`
+### `server/src/features/destination/destination.controller.js`
 - ✅ Line 39-61: MongoDB text search instead of regex
 
-### `src/features/blog/blog.routes.js`
+### `server/src/features/blog/blog.routes.js`
 - ✅ Line 5: Added `express-rate-limit` import
 - ✅ Line 47-56: Engagement rate limiter
 - ✅ Line 211-213: Rate limiter applied to like endpoint
@@ -162,14 +162,14 @@ redis-cli ping
 ### Issue: High memory usage
 ```
 Solution: Verify .lean() is applied
-grep -r "\.lean()" src/features/blog/
+grep -r "\.lean()" server/src/features/blog/
 # Should show multiple instances
 ```
 
 ### Issue: View count not incrementing
 ```
 Solution: Check atomic operation
-grep "findByIdAndUpdate" src/features/blog/blog.controller.js
+grep "findByIdAndUpdate" server/src/features/blog/blog.controller.js
 # Should show $inc operator
 ```
 

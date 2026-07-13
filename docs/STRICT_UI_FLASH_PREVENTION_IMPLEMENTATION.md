@@ -54,7 +54,7 @@ NO DASHBOARD HTML SENT IF UNAUTHORIZED ✅
 
 ## 📁 NEW FILES CREATED
 
-### 1. **`src/utils/server-auth.ts`** - Server-Side Auth Utilities
+### 1. **`server/src/utils/server-auth.ts`** - Server-Side Auth Utilities
 Core functions for server-side role verification:
 
 ```typescript
@@ -145,7 +145,7 @@ Client-side render of moderator interface (after server verification)
 
 ---
 
-### 6. **`src/utils/role-protection.tsx`** - Role Protection Wrapper
+### 6. **`server/src/utils/role-protection.tsx`** - Role Protection Wrapper
 Reusable component for protecting any page/section:
 
 ```typescript

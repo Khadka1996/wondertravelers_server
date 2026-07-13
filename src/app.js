@@ -377,7 +377,10 @@ if (!isTest) {
 // Analytics Tracking Middleware
 // ========================
 // Track all page views for analytics (must be before static files and routes)
-app.use(analyticsTrackingMiddleware);
+// Skip analytics during `test` to avoid DB writes and timeouts
+if (!isTest) {
+  app.use(analyticsTrackingMiddleware);
+}
 
 // ========================
 // Static Files
@@ -414,6 +417,7 @@ import destinationRoutes from './features/destination/destination.routes.js';
 import settingsRoutes from './features/settings/settings.routes.js';
 import advertisementRoutes from './features/advertisement/advertisement.routes.js';
 import activityRoutes from './features/activity/activity.routes.js';
+import { getNews } from './features/blog/blog.controller.js';
 
 // Import Blog Scheduler for auto-publishing scheduled blogs
 import { initializeBlogScheduler } from './utils/blog-scheduler.util.js';
@@ -507,6 +511,12 @@ app.use('/api/perf', perfRoutes);
 app.use('/api/authors', authorRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/news', (req, res, next) => {
+  if (req.method === 'GET') {
+    return getNews(req, res, next);
+  }
+  return res.status(405).json({ success: false, message: 'Method not allowed on /api/news' });
+});
 app.use('/api/featured-images', featuredImageRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/photos', photoRoutes);

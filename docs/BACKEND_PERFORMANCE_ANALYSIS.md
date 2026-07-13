@@ -115,7 +115,7 @@ Current User Capacity:
 **Result:** Can use all CPU cores
 
 ```javascript
-// src/server.js - Add this at top
+// server/src/server.js - Add this at top
 import cluster from 'cluster';
 import os from 'os';
 
@@ -157,7 +157,7 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
 ### 2️⃣ Increase Database Connection Pool
 
 ```javascript
-// src/server.js - MongoDB config
+// server/src/server.js - MongoDB config
 
 // CURRENT (development)
 maxPoolSize: 25,
@@ -186,7 +186,7 @@ Expected concurrent DB operations:
 
 **Add Query Caching:**
 ```javascript
-// src/features/blog/blog.controller.js
+// server/src/features/blog/blog.controller.js
 
 // BEFORE: No caching, hits DB every time
 export const getBlogs = async (req, res) => {
@@ -247,7 +247,7 @@ blogSchema.index({ createdAt: -1 });                // For recent
 ### 4️⃣ Aggressive Response Compression
 
 ```javascript
-// src/app.js
+// server/src/app.js
 
 // CURRENT
 app.use(compression());
@@ -286,7 +286,7 @@ app.use((req, res, next) => {
 ### 5️⃣ Implement Request Deduplication
 
 ```javascript
-// src/middleware/deduplication.middleware.js
+// server/src/middleware/deduplication.middleware.js
 
 import cache from '../utils/cache.util.js';
 
@@ -352,16 +352,16 @@ Result: 1 DB query instead of 3! 🎉
 // package.json
 {
   "scripts": {
-    "start": "NODE_MAX_OLD_SPACE_SIZE=2048 node src/server.js",
-    "start:prod": "NODE_MAX_OLD_SPACE_SIZE=4096 node src/server.js",
-    "dev": "NODE_MAX_OLD_SPACE_SIZE=1024 nodemon src/server.js"
+    "start": "NODE_MAX_OLD_SPACE_SIZE=2048 node server/src/server.js",
+    "start:prod": "NODE_MAX_OLD_SPACE_SIZE=4096 node server/src/server.js",
+    "dev": "NODE_MAX_OLD_SPACE_SIZE=1024 nodemon server/src/server.js"
   }
 }
 ```
 
 **Enable Aggressive GC in production:**
 ```bash
-node --expose-gc src/server.js \
+node --expose-gc server/src/server.js \
   --max-old-space-size=4096 \
   --max-semi-space-size=1024
 ```
@@ -432,7 +432,7 @@ PORT=5004 npm run start &
 ### Session Sharing with Redis
 
 ```javascript
-// src/app.js
+// server/src/app.js
 
 import RedisStore from 'connect-redis';
 
@@ -459,7 +459,7 @@ app.use(session({
 ### Message Queue (Bull/RabbitMQ)
 
 ```javascript
-// src/utils/queue.util.js
+// server/src/utils/queue.util.js
 
 import Bull from 'bull';
 
@@ -495,7 +495,7 @@ emailQueue.process(async (job) => {
 ### Circuit Breaker Pattern
 
 ```javascript
-// src/middleware/circuit-breaker.middleware.js
+// server/src/middleware/circuit-breaker.middleware.js
 
 class CircuitBreaker {
   constructor(threshold = 5, timeout = 60000) {
@@ -568,7 +568,7 @@ Database down?
 ### Add Custom Metrics
 
 ```javascript
-// src/utils/metrics.util.js
+// server/src/utils/metrics.util.js
 
 import client from 'prom-client';
 

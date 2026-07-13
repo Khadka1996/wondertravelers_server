@@ -7,7 +7,7 @@ This document lists all files created and modified during the backend performanc
 
 ## 🔧 Files Modified (5)
 
-### 1. `src/features/blog/blog.model.js`
+### 1. `server/src/features/blog/blog.model.js`
 **Changes Made**: 4 major updates
 
 #### A. Added Composite Database Indexes (Lines 218-238)
@@ -69,7 +69,7 @@ blogSchema.statics.getSimilarBlogs = async function(id, limit = 5) {
 
 ---
 
-### 2. `src/features/blog/blog.controller.js`
+### 2. `server/src/features/blog/blog.controller.js`
 **Changes Made**: 2 major updates
 
 #### A. Atomic View Increment (Lines 620-650)
@@ -97,7 +97,7 @@ const blog = await Blog.findById(id)
 
 ---
 
-### 3. `src/features/destination/destination.model.js`
+### 3. `server/src/features/destination/destination.model.js`
 **Changes Made**: 1 major update
 
 #### A. Added Sparse Flag to Unique Indexes (Lines 5-19)
@@ -121,7 +121,7 @@ slug: {
 
 ---
 
-### 4. `src/features/destination/destination.controller.js`
+### 4. `server/src/features/destination/destination.controller.js`
 **Changes Made**: 2 major updates
 
 #### A. MongoDB Text Search (Lines 39-61)
@@ -147,7 +147,7 @@ const destinations = await Destination.find(filters)
 
 ---
 
-### 5. `src/features/blog/blog.routes.js`
+### 5. `server/src/features/blog/blog.routes.js`
 **Changes Made**: 2 major updates
 
 #### A. Added Rate Limiting Import (Line 5)

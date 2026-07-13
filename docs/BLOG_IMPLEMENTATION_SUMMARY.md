@@ -3,7 +3,7 @@
 ## What Was Just Added
 
 ### 1. **Complete Blog Schema Enhancement** 🔧
-**Files Modified:** `src/features/blog/blog.model.js`
+**Files Modified:** `server/src/features/blog/blog.model.js`
 
 **New Fields Added:**
 - ✅ `status` (enum: draft, published, archived, scheduled)
@@ -125,7 +125,7 @@ GET  /api/blogs/engagement/most-liked
 
 ### 6. **Auto-Publishing Scheduler** ⏰
 
-**Files Created:** `src/utils/blog-scheduler.util.js`
+**Files Created:** `server/src/utils/blog-scheduler.util.js`
 
 **Features:**
 - ✅ Runs every 5 minutes (configurable)
@@ -319,13 +319,13 @@ Get /api/blogs/trending
 ## Files Modified/Created
 
 ### Modified Files:
-1. ✅ `src/features/blog/blog.model.js` - Schema + methods + statics
-2. ✅ `src/features/blog/blog.controller.js` - 9 new handlers
-3. ✅ `src/features/blog/blog.routes.js` - 12 new routes
-4. ✅ `src/app.js` - Added scheduler initialization
+1. ✅ `server/src/features/blog/blog.model.js` - Schema + methods + statics
+2. ✅ `server/src/features/blog/blog.controller.js` - 9 new handlers
+3. ✅ `server/src/features/blog/blog.routes.js` - 12 new routes
+4. ✅ `server/src/app.js` - Added scheduler initialization
 
 ### New Files:
-1. ✅ `src/utils/blog-scheduler.util.js` - Auto-publishing
+1. ✅ `server/src/utils/blog-scheduler.util.js` - Auto-publishing
 2. ✅ `docs/BLOG_COMPLETE_FEATURES_GUIDE.md` - Full documentation
 
 ---

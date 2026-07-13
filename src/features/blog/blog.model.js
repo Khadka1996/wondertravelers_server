@@ -155,6 +155,12 @@ const blogSchema = new Schema(
       default: false,
       index: true
     },
+    breakingExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+      sparse: true
+    },
     
     // ========== MEDIA ==========
     featuredImage: {
@@ -224,6 +230,11 @@ blogSchema.index({ author: 1, status: 1, publishedAt: -1 });
 blogSchema.index({ category: 1, status: 1, publishedAt: -1 });
 blogSchema.index({ isFeatured: 1, status: 1, publishedAt: -1 });
 blogSchema.index({ isBreaking: 1, status: 1, publishedAt: -1 }); // ⚡ FIXED: Added status filter
+blogSchema.index({ type: 1, status: 1, isBreaking: -1, isFeatured: -1, views: -1, publishedAt: -1 });
+blogSchema.index({ type: 1, status: 1, isBreaking: -1, isFeatured: -1, likesCount: -1, publishedAt: -1 });
+blogSchema.index({ isBreaking: 1, breakingExpiresAt: 1 }); // ⚡ For checking expired breaking news
+blogSchema.index({ type: 1, status: 1, publishedAt: -1, views: -1 });
+blogSchema.index({ category: 1, status: 1, type: 1, publishedAt: -1 });
 blogSchema.index({ views: -1, publishedAt: -1 }); // For trending
 blogSchema.index({ publishedAt: -1 }); // For recent
 blogSchema.index({ scheduledFor: 1, status: 1 }); // For scheduled posts

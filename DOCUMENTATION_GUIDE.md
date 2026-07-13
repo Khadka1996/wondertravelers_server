@@ -237,11 +237,11 @@ This is recommended before production deployment.
 ├── OPTIMIZATION_ROADMAP.md (For Tier 2 planning)
 ├── BACKEND_PERFORMANCE_ANALYSIS.md (For analysis)
 ├── CODE CHANGES:
-│   ├── src/utils/cluster.util.js (NEW)
-│   ├── src/middleware/request-deduplication.middleware.js (NEW)
-│   ├── src/server.js (MODIFIED)
-│   ├── src/app.js (MODIFIED)
-│   ├── src/features/blog/blog.controller.js (MODIFIED)
+│   ├── server/src/utils/cluster.util.js (NEW)
+│   ├── server/src/middleware/request-deduplication.middleware.js (NEW)
+│   ├── server/src/server.js (MODIFIED)
+│   ├── server/src/app.js (MODIFIED)
+│   ├── server/src/features/blog/blog.controller.js (MODIFIED)
 │   └── package.json (MODIFIED)
 ```
 

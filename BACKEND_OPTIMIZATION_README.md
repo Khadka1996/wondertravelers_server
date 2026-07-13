@@ -60,7 +60,7 @@ npm run start:prod
 ## 📋 10 Critical Optimizations Implemented
 
 ### 1. ⚡ Atomic View Increments
-**File**: `src/features/blog/blog.controller.js`
+**File**: `server/src/features/blog/blog.controller.js`
 ```javascript
 // ❌ Before: Non-atomic, blocking, race condition risk
 blog.views = (blog.views || 0) + 1;
@@ -74,7 +74,7 @@ Blog.findByIdAndUpdate(id, { $inc: { views: 1 } }).exec();
 ---
 
 ### 2. 🔥 N+1 Query Fix
-**File**: `src/features/blog/blog.model.js` (lines 789-841)
+**File**: `server/src/features/blog/blog.model.js` (lines 789-841)
 ```javascript
 // ❌ Before: 2 queries for comments + replies
 const comments = await this.find(...)
@@ -91,7 +91,7 @@ const comments = await this.aggregate([
 ---
 
 ### 3. 📈 Database Indexes
-**File**: `src/features/blog/blog.model.js` (lines 218-238)
+**File**: `server/src/features/blog/blog.model.js` (lines 218-238)
 ```javascript
 // Added composite indexes for frequently used queries
 blogSchema.index({ status: 1, type: 1, publishedAt: -1 });
@@ -103,7 +103,7 @@ blogSchema.index({ isFeatured: 1, status: 1, publishedAt: -1 });
 ---
 
 ### 4. 💾 Smart Cache Invalidation
-**File**: `src/features/blog/blog.model.js` (lines 350-381)
+**File**: `server/src/features/blog/blog.model.js` (lines 350-381)
 ```javascript
 // ❌ Before: Aggressive invalidation
 await cache.delPattern('blogs:*');  // Wipes everything!
@@ -119,7 +119,7 @@ if (doc.isModified('status')) {
 ---
 
 ### 5. 🎯 Missing Static Method
-**File**: `src/features/blog/blog.model.js` (lines 571-588)
+**File**: `server/src/features/blog/blog.model.js` (lines 571-588)
 ```javascript
 // ✅ Added optimized similar blogs retrieval
 blogSchema.statics.getSimilarBlogs = async function(id, limit = 5) {
@@ -138,7 +138,7 @@ blogSchema.statics.getSimilarBlogs = async function(id, limit = 5) {
 ---
 
 ### 6. ⚛️ Atomic Engagement Methods
-**File**: `src/features/blog/blog.model.js` (lines 427-476)
+**File**: `server/src/features/blog/blog.model.js` (lines 427-476)
 ```javascript
 // ✅ All engagement methods now use atomic operators
 blogSchema.methods.incrementViews = async function() {
@@ -162,7 +162,7 @@ blogSchema.methods.toggleLike = async function(userId) {
 ---
 
 ### 7. 🔐 Data Integrity Fixes
-**File**: `src/features/destination/destination.model.js`
+**File**: `server/src/features/destination/destination.model.js`
 ```javascript
 // ✅ Added sparse flag to unique indexes
 name: {
@@ -180,7 +180,7 @@ slug: {
 ---
 
 ### 8. 🔍 Text Search Optimization
-**File**: `src/features/destination/destination.controller.js` (lines 39-61)
+**File**: `server/src/features/destination/destination.controller.js` (lines 39-61)
 ```javascript
 // ❌ Before: Regex scan (O(n) complexity)
 const searchRegex = new RegExp(search, 'i');
@@ -207,7 +207,7 @@ const blogs = await Blog.findById(id)
 ---
 
 ### 10. 🛡️ Bot Protection
-**File**: `src/features/blog/blog.routes.js` (lines 47-56)
+**File**: `server/src/features/blog/blog.routes.js` (lines 47-56)
 ```javascript
 // ✅ Rate limiting on engagement endpoints
 const engagementLimiter = rateLimit({
@@ -224,27 +224,27 @@ router.post('/:id/like', authMiddleware.protect, engagementLimiter, likeBlog);
 ## 📊 Files Modified
 
 ```
-✅ src/features/blog/blog.model.js
+✅ server/src/features/blog/blog.model.js
    - Added composite indexes
    - Granular cache invalidation
    - Missing getSimilarBlogs static method
    - Atomic engagement methods
    - N+1 query fix with aggregation
 
-✅ src/features/blog/blog.controller.js
+✅ server/src/features/blog/blog.controller.js
    - Atomic view increment (fire-and-forget)
    - Added .lean() to read queries
    - Optimized getBlogById endpoint
 
-✅ src/features/destination/destination.model.js
+✅ server/src/features/destination/destination.model.js
    - Added sparse flag to unique indexes
 
-✅ src/features/destination/destination.controller.js
+✅ server/src/features/destination/destination.controller.js
    - MongoDB text search instead of regex
    - Added .lean() for memory efficiency
    - Query hint for index selection
 
-✅ src/features/blog/blog.routes.js
+✅ server/src/features/blog/blog.routes.js
    - Added rate limiting for engagement endpoints
    - Protected against bot abuse
 ```
@@ -420,10 +420,10 @@ db.blogs.find({...}).explain("executionStats")
 ### Issue: High Memory Usage
 ```bash
 # Verify .lean() is used
-grep -r "\.lean()" src/features/blog/
+grep -r "\.lean()" server/src/features/blog/
 
 # Profile memory
-node --inspect src/server.js
+node --inspect server/src/server.js
 # Open chrome://inspect in Chrome
 ```
 

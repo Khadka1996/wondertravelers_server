@@ -14,7 +14,7 @@ import { generateSEOMetadata } from '../../utils/seo-generator.util.js';
 /**
  * Sanitize pagination parameters
  */
-const sanitizePagination = (page, limit, maxLimit = 50) => {
+export const sanitizePagination = (page, limit, maxLimit = 50) => {
   const sanitizedPage = Math.max(1, parseInt(page) || 1);
   const sanitizedLimit = Math.min(Math.max(1, parseInt(limit) || 10), maxLimit);
   const skip = (sanitizedPage - 1) * sanitizedLimit;
@@ -22,15 +22,41 @@ const sanitizePagination = (page, limit, maxLimit = 50) => {
   return { page: sanitizedPage, limit: sanitizedLimit, skip };
 };
 
-const normalizeSortValue = (sortBy, fallback = 'latest') => {
+export const normalizeSortValue = (sortBy, fallback = 'latest') => {
   const allowedSorts = ['latest', 'trending', 'mostViewed', 'mostLiked', 'oldest'];
   return allowedSorts.includes(sortBy) ? sortBy : fallback;
 };
 
-const getListQueryHint = (filter) => {
+const getListQueryHint = (filter, sortValue = 'latest') => {
   if (filter.category) {
+    if (sortValue === 'mostViewed') {
+      return { category: 1, status: 1, views: -1, publishedAt: -1 };
+    }
+    if (sortValue === 'mostLiked') {
+      return { category: 1, status: 1, likesCount: -1, publishedAt: -1 };
+    }
+    if (sortValue === 'oldest') {
+      return { category: 1, status: 1, publishedAt: 1, createdAt: 1 };
+    }
     return { category: 1, status: 1, publishedAt: -1 };
   }
+
+  if (sortValue === 'mostViewed') {
+    return { status: 1, type: 1, views: -1, publishedAt: -1 };
+  }
+
+  if (sortValue === 'mostLiked') {
+    return { status: 1, type: 1, likesCount: -1, publishedAt: -1 };
+  }
+
+  if (sortValue === 'trending') {
+    return { status: 1, type: 1, publishedAt: -1, views: -1 };
+  }
+
+  if (sortValue === 'oldest') {
+    return { status: 1, type: 1, publishedAt: 1, createdAt: 1 };
+  }
+
   return { status: 1, type: 1, publishedAt: -1 };
 };
 
@@ -42,6 +68,23 @@ const setCacheHeaders = (res, duration = 60) => {
     'Cache-Control': `public, max-age=${duration}`,
     'Expires': new Date(Date.now() + duration * 1000).toUTCString()
   });
+};
+
+/**
+ * ⏰ Auto-expire breaking news status after 24 hours
+ * Returns true if breaking status has expired
+ */
+const isBreakingExpired = (breakingExpiresAt) => {
+  if (!breakingExpiresAt) return false;
+  return new Date() > new Date(breakingExpiresAt);
+};
+
+/**
+ * Set breaking news expiry to 24 hours from now
+ */
+const setBreakingExpiry = () => {
+  const now = new Date();
+  return new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
 };
 
 /**
@@ -487,7 +530,7 @@ export const getBlogsByAuthorName = async (req, res) => {
 // Supports both /api/blogs (type=blog) and /api/blogs?type=news queries
 export const getBlogs = async (req, res) => {
   try {
-    const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
+    const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit ?? 12, 12);
     const { category, sortBy, type } = req.query;
     const sortValue = normalizeSortValue(sortBy, 'latest');
     
@@ -517,6 +560,12 @@ export const getBlogs = async (req, res) => {
     if (category) {
       filter.category = category;
     }
+    
+    // ⏰ Exclude expired breaking news (auto-expired after 24h)
+    filter.$or = [
+      { isBreaking: false },
+      { isBreaking: true, breakingExpiresAt: { $gt: new Date() } }
+    ];
     
     console.log(`🔍 Fetching ${blogType} from DB with filter:`, filter);
 
@@ -548,18 +597,27 @@ export const getBlogs = async (req, res) => {
 
     const queryHint = getListQueryHint(filter);
 
-    const [blogs, totalBlogs] = await Promise.all([
-      Blog.find(filter)
-        .select('title slug subHeading featuredImage author category likesCount views publishedAt status type isFeatured')
-        .populate('author', 'name profileImage')
-        .populate('category', 'name slug')
-        .sort(sortOrder)
-        .hint(queryHint)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Blog.countDocuments(filter).hint(queryHint)
-    ]);
+    // Prepare count query and apply hint only if supported (some test fakes return plain numbers)
+    const countQuery = Blog.countDocuments(filter);
+    if (countQuery && typeof countQuery.hint === 'function') {
+      try { countQuery.hint(queryHint); } catch (e) { /* ignore hint errors */ }
+    }
+
+    const blogsQuery = Blog.find(filter)
+      .select('title slug subHeading featuredImage author category likesCount views publishedAt status type isFeatured')
+      .populate('author', 'name profileImage')
+      .populate('category', 'name slug')
+      .sort(sortOrder)
+      .hint(queryHint)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const countPromise = (countQuery && typeof countQuery.exec === 'function')
+      ? countQuery.exec()
+      : (typeof countQuery.then === 'function' ? countQuery : Promise.resolve(countQuery));
+
+    const [blogs, totalBlogs] = await Promise.all([blogsQuery, countPromise]);
 
     console.log(`📊 ${blogType.toUpperCase()} fetch result: found ${totalBlogs} total, returning ${blogs.length} items on page ${page}`);
     
@@ -615,7 +673,7 @@ export const getBlogs = async (req, res) => {
 export const getNews = async (req, res) => {
   try {
     const { page, limit, sortBy, category } = req.query;
-    const { page: sanitizedPage, limit: sanitizedLimit, skip: sanitizedSkip } = sanitizePagination(page, limit);
+    const { page: sanitizedPage, limit: sanitizedLimit, skip: sanitizedSkip } = sanitizePagination(page, limit ?? 12, 12);
     const sortValue = normalizeSortValue(sortBy, 'latest');
     
     console.log(`📰 getNews called: page=${sanitizedPage}, limit=${sanitizedLimit}, skip=${sanitizedSkip}, sortBy=${sortValue}, category=${category || 'none'}`);
@@ -641,6 +699,12 @@ export const getNews = async (req, res) => {
     if (category) {
       filter.category = category;
     }
+
+    // ⏰ Exclude expired breaking news (auto-expired after 24h)
+    filter.$or = [
+      { isBreaking: false },
+      { isBreaking: true, breakingExpiresAt: { $gt: new Date() } }
+    ];
 
     console.log(`🔍 Fetching news from DB with filter:`, filter, `skip=${sanitizedSkip}, limit=${sanitizedLimit}`);
 
@@ -671,7 +735,7 @@ export const getNews = async (req, res) => {
         console.log(`⏱️ Latest sort (DEFAULT): ${JSON.stringify(sortOrder)}`);
     }
 
-    const queryHint = getListQueryHint(filter);
+    const queryHint = getListQueryHint(filter, sortValue);
 
     const [news, totalNews] = await Promise.all([
       Blog.find(filter)
@@ -878,6 +942,13 @@ export const createBlog = async (req, res) => {
     if (typeof allowComments === 'string') allowComments = allowComments === 'true';
     if (typeof isScheduled === 'string') isScheduled = isScheduled === 'true';
 
+    // ⏰ Set breaking news expiry to 24 hours from now if marked as breaking
+    let breakingExpiresAt = null;
+    if (isBreaking) {
+      breakingExpiresAt = setBreakingExpiry();
+      console.log(`🔴 Breaking news will expire at: ${breakingExpiresAt}`);
+    }
+
     // Auto-generate excerpt from title, subHeading, and content
     const generatedExcerpt = generateExcerpt(title, subHeading, content);
     
@@ -906,6 +977,7 @@ export const createBlog = async (req, res) => {
       tags: tags,
       isFeatured,
       isBreaking,
+      breakingExpiresAt,
       allowComments,
       isScheduled,
       type: type || 'blog',
@@ -1038,7 +1110,16 @@ export const updateBlog = async (req, res) => {
     if (typeof isScheduled === 'string') isScheduled = isScheduled === 'true';
 
     if (typeof isFeatured === 'boolean') updates.isFeatured = isFeatured;
-    if (typeof isBreaking === 'boolean') updates.isBreaking = isBreaking;
+    if (typeof isBreaking === 'boolean') {
+      updates.isBreaking = isBreaking;
+      // ⏰ Update breaking expiry when isBreaking changes
+      if (isBreaking) {
+        updates.breakingExpiresAt = setBreakingExpiry();
+        console.log(`🔴 Breaking news expiry updated to: ${updates.breakingExpiresAt}`);
+      } else {
+        updates.breakingExpiresAt = null;
+      }
+    }
     if (typeof allowComments === 'boolean') updates.allowComments = allowComments;
     if (typeof isScheduled === 'boolean') updates.isScheduled = isScheduled;
 

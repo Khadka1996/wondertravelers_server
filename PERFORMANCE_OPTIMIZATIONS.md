@@ -254,7 +254,7 @@ router.post('/:id/like', authMiddleware.protect, engagementLimiter, likeBlog);
 4. **Memory Profiling**:
    ```bash
    # Check memory usage
-   node --inspect src/server.js
+   node --inspect server/src/server.js
    ```
 
 ---
@@ -288,7 +288,7 @@ redis-cli INFO stats | grep hit_ratio
 ### Node.js Profiling
 ```bash
 # Memory leak detection
-node --inspect src/server.js
+node --inspect server/src/server.js
 # Open chrome://inspect in Chrome DevTools
 ```
 

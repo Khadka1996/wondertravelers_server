@@ -28,25 +28,25 @@ Use this checklist to confirm Tier 1 optimization is working correctly.
 ### Code Verification
 - [ ] Cluster util file exists
   ```bash
-  ls -l src/utils/cluster.util.js
+  ls -l server/src/utils/cluster.util.js
   # Should exist, > 100 bytes
   ```
 
 - [ ] Dedup middleware file exists
   ```bash
-  ls -l src/middleware/request-deduplication.middleware.js
+  ls -l server/src/middleware/request-deduplication.middleware.js
   # Should exist, > 50 bytes
   ```
 
 - [ ] Server.js has cluster imports
   ```bash
-  grep -n "initializeCluster" src/server.js
+  grep -n "initializeCluster" server/src/server.js
   # Should find matches
   ```
 
 - [ ] App.js has dedup middleware
   ```bash
-  grep -n "requestDeduplication" src/app.js
+  grep -n "requestDeduplication" server/src/app.js
   # Should find import and usage
   ```
 
@@ -270,10 +270,10 @@ ps aux | grep "node src/server"
 
 **Expected Output:** Multiple node processes (one per CPU core)
 ```
-user    XXXXX  0.0  0.5 ... node src/server.js
-user    XXXXX  0.0  0.5 ... node src/server.js
-user    XXXXX  0.0  0.5 ... node src/server.js
-user    XXXXX  0.0  0.5 ... node src/server.js
+user    XXXXX  0.0  0.5 ... node server/src/server.js
+user    XXXXX  0.0  0.5 ... node server/src/server.js
+user    XXXXX  0.0  0.5 ... node server/src/server.js
+user    XXXXX  0.0  0.5 ... node server/src/server.js
 ```
 
 **Checklist:**
@@ -283,7 +283,7 @@ user    XXXXX  0.0  0.5 ... node src/server.js
 
 ### Verify MongoDB Pool Size
 ```bash
-grep -A2 "maxPoolSize" src/server.js
+grep -A2 "maxPoolSize" server/src/server.js
 ```
 
 **Expected:**
@@ -498,7 +498,7 @@ npm run start:prod 2>&1 | grep -i error
 NODE_ENV=production npm run start:prod
 
 # Check if cluster import exists
-grep -n "import.*cluster" src/utils/cluster.util.js
+grep -n "import.*cluster" server/src/utils/cluster.util.js
 ```
 
 ### Requests Timing Out
@@ -514,7 +514,7 @@ grep -n "import.*cluster" src/utils/cluster.util.js
 autocannon -c 500 -d 30 # instead of 1000
 
 # Check database pool
-grep "maxPoolSize" src/server.js
+grep "maxPoolSize" server/src/server.js
 # Should be 250
 ```
 

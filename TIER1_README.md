@@ -21,11 +21,11 @@
 
 | Optimization | Impact | File | Status |
 |---|---|---|---|
-| **Cluster Mode** | 3.5x throughput | `/src/utils/cluster.util.js` | ✅ Done |
-| **DB Pool Tuning** | 1.5x throughput | `/src/server.js` | ✅ Done |
+| **Cluster Mode** | 3.5x throughput | `/server/src/utils/cluster.util.js` | ✅ Done |
+| **DB Pool Tuning** | 1.5x throughput | `/server/src/server.js` | ✅ Done |
 | **Query .lean()** | 1.3x throughput | `blog.controller.js` | ✅ Done |
 | **Request Dedup** | 1.5x on trending | `request-dedup.middleware.js` | ✅ Done |
-| **Compression** | 60-75% bandwidth | `/src/app.js` | ✅ Done |
+| **Compression** | 60-75% bandwidth | `/server/src/app.js` | ✅ Done |
 
 ---
 
@@ -104,21 +104,21 @@ autocannon -c 100 -d 30 http://localhost:5000/api/blogs
 
 ### Code Changes (Already Implemented)
 ```
-✅ /src/utils/cluster.util.js (NEW - 100+ lines)
+✅ /server/src/utils/cluster.util.js (NEW - 100+ lines)
    └─ Multi-worker cluster management
 
-✅ /src/middleware/request-deduplication.middleware.js (NEW - 60+ lines)
+✅ /server/src/middleware/request-deduplication.middleware.js (NEW - 60+ lines)
    └─ Prevents duplicate request storms
 
-✅ /src/server.js (MODIFIED)
+✅ /server/src/server.js (MODIFIED)
    └─ Cluster initialization
    └─ DB pool: 60→250 max connections, 8→75 min
 
-✅ /src/app.js (MODIFIED)
+✅ /server/src/app.js (MODIFIED)
    └─ Added dedup middleware
    └─ Enhanced compression configuration
 
-✅ /src/features/blog/blog.controller.js (MODIFIED)
+✅ /server/src/features/blog/blog.controller.js (MODIFIED)
    └─ Optimized all .lean() queries
 
 ✅ package.json (MODIFIED)

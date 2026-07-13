@@ -343,7 +343,7 @@ const user = await requireRole(['admin']);
 
 #### 5. API URL is Correct
 ```typescript
-// Check src/utils/server-auth.ts
+// Check server/src/utils/server-auth.ts
 const apiUrl = process.env.API_URL || 
                process.env.NEXT_PUBLIC_API_URL || 
                'http://localhost:5000';

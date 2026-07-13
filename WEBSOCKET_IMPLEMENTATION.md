@@ -615,7 +615,7 @@ module.exports = {
   apps: [
     {
       name: 'travel-api',
-      script: './src/server.js',
+      script: './server/src/server.js',
       instances: 'max',
       exec_mode: 'cluster',
       env: {
@@ -643,7 +643,7 @@ COPY package*.json ./
 RUN npm ci --only=production
 COPY . .
 EXPOSE 5000
-CMD ["node", "src/server.js"]
+CMD ["node", "server/src/server.js"]
 ```
 
 ---

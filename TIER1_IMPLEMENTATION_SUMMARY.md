@@ -11,32 +11,32 @@ Your backend has been **fully optimized for Tier 1**, enabling capacity to incre
 ## What Was Implemented (5 Major Changes)
 
 ### 1. Cluster Mode ✅
-- **File:** `/src/utils/cluster.util.js` (NEW - 100+ lines)
+- **File:** `/server/src/utils/cluster.util.js` (NEW - 100+ lines)
 - **What:** Multi-worker Node.js cluster utilizing all CPU cores
 - **Impact:** 3.5-4x throughput multiplier
 - **How:** Automatically spawns workers = # of CPU cores, with auto-respawn on crash
 
 ### 2. Database Connection Pool Optimization ✅
-- **File:** `/src/server.js` (MODIFIED)
+- **File:** `/server/src/server.js` (MODIFIED)
 - **What:** Increased MongoDB pool size from 60→250 max connections
 - **Impact:** 1.5x throughput multiplier, removes DB bottleneck
 - **Config:** minPoolSize: 75 (warm connections), maxPoolSize: 250 (peak capacity)
 
 ### 3. Query Optimization with .lean() ✅
-- **File:** `/src/features/blog/blog.controller.js` (MODIFIED)
+- **File:** `/server/src/features/blog/blog.controller.js` (MODIFIED)
 - **What:** All read-only queries now use `.lean(true)` (plain JS objects)
 - **Impact:** 1.3-1.5x throughput multiplier, 40% serialization faster
 - **Methods:** getRecentBlogs, getBlogsByCategory, getModerationBlogs, all static methods
 
 ### 4. Request Deduplication Middleware ✅
-- **File:** `/src/middleware/request-deduplication.middleware.js` (NEW - 60+ lines)
-- **File:** `/src/app.js` (MODIFIED - added middleware import + integration)
+- **File:** `/server/src/middleware/request-deduplication.middleware.js` (NEW - 60+ lines)
+- **File:** `/server/src/app.js` (MODIFIED - added middleware import + integration)
 - **What:** Prevents duplicate identical GET requests from hitting DB simultaneously
 - **Impact:** 1.5-2x improvement for trending/popular endpoints
 - **Example:** 10 users requesting "trending blogs" in parallel = 1 DB query instead of 10
 
 ### 5. Response Compression Enhancement ✅
-- **File:** `/src/app.js` (MODIFIED)
+- **File:** `/server/src/app.js` (MODIFIED)
 - **What:** Optimized gzip compression with proper thresholds
 - **Impact:** 60-75% reduction in response sizes
 - **Config:** Level 11 (max) for production, 512 byte threshold
@@ -47,25 +47,25 @@ Your backend has been **fully optimized for Tier 1**, enabling capacity to incre
 
 ### New Files (2)
 ```
-✅ /src/utils/cluster.util.js (100+ lines)
+✅ /server/src/utils/cluster.util.js (100+ lines)
    └─ Cluster mode initialization and worker management
    
-✅ /src/middleware/request-deduplication.middleware.js (60+ lines)
+✅ /server/src/middleware/request-deduplication.middleware.js (60+ lines)
    └─ Prevents duplicate request storms
 ```
 
 ### Modified Files (3)
 ```
-✅ /src/server.js
+✅ /server/src/server.js
    └─ Added: Cluster imports and initialization
    └─ Modified: MongoDB pool sizing (60→250 max, 8→75 min)
    
-✅ /src/app.js
+✅ /server/src/app.js
    └─ Added: Request deduplication middleware import
    └─ Added: Middleware integration at top of stack
    └─ Modified: Compression configuration (level + threshold)
    
-✅ /src/features/blog/blog.controller.js
+✅ /server/src/features/blog/blog.controller.js
    └─ Modified: All .lean() calls optimized (.lean() → .lean(true))
    └─ Affected: 7+ read-only endpoints
 ```
@@ -373,7 +373,7 @@ env | grep -i cluster
 NODE_OPTIONS="--max-old-space-size=4096" npm run start:prod
 
 # Monitor memory
-node --expose-gc src/server.js
+node --expose-gc server/src/server.js
 # Memory should stabilize after GC cycles
 ```
 
@@ -448,11 +448,11 @@ Verify these items after starting server:
 
 | Component | Status | File | Impact |
 |-----------|--------|------|--------|
-| Cluster Mode | ✅ Complete | `/src/utils/cluster.util.js` | 3.5x throughput |
-| DB Pool | ✅ Optimized | `/src/server.js` | 1.5x throughput |
+| Cluster Mode | ✅ Complete | `/server/src/utils/cluster.util.js` | 3.5x throughput |
+| DB Pool | ✅ Optimized | `/server/src/server.js` | 1.5x throughput |
 | Query Lean | ✅ Optimized | `blog.controller.js` | 1.3x throughput |
-| Dedup Middleware | ✅ Complete | `/src/middleware/request-dedup.js` | 1.5x on trending |
-| Compression | ✅ Enhanced | `/src/app.js` | 60-75% bandwidth |
+| Dedup Middleware | ✅ Complete | `/server/src/middleware/request-dedup.js` | 1.5x on trending |
+| Compression | ✅ Enhanced | `/server/src/app.js` | 60-75% bandwidth |
 | NPM Scripts | ✅ Added | `package.json` | Easy startup |
 
 ---

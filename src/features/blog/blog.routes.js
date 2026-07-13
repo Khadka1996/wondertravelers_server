@@ -240,7 +240,7 @@ router.get('/:id', getBlogById);
 // Update a blog (Admin or Super Admin) - with file upload support
 router.put('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('featuredImage')), updateBlog);
 
-// Delete a blog (Admin or Super Admin)
-router.delete('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, deleteBlog);
+// Delete a blog (Admin or Moderator)
+router.delete('/:id', (req, res, next) => authMiddleware.protect(req, res, next), authMiddleware.restrictTo('admin', 'moderator'), deleteBlog);
 
 export default router;

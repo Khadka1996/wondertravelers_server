@@ -380,7 +380,7 @@ socket.emit('blog:like', {
 module.exports = {
   apps: [{
     name: 'api',
-    script: './src/server.js',
+    script: './server/src/server.js',
     instances: 'max',
     exec_mode: 'cluster'
   }]

@@ -45,7 +45,7 @@ Auth System (Strong)
 ### Frontend (`/newclient/src/`)
 ```
 Auth System (Strict)
-├── /src/utils/server-auth.ts        ← Server utilities
+├── /server/src/utils/server-auth.ts        ← Server utilities
 │   ├── getCurrentUser()             ← Fetch user from backend
 │   ├── requireRole()                ← Verify role before rendering
 │   ├── hasRole()                    ← Check role without blocking
@@ -351,7 +351,7 @@ BCRYPT_ROUNDS=12                   # Password hashing strength
 
 ### Configuration (Frontend)
 ```typescript
-// src/utils/server-auth.ts
+// server/src/utils/server-auth.ts
 const API_URL = 'http://localhost:5000'  // Backend URL
 const COOKIE_PATH = '/'                  // Cookies sent to all routes
 ```

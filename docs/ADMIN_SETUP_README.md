@@ -23,10 +23,10 @@ You now have a fully functional admin panel with a dedicated Featured Images man
 8. **`/ADMIN_SETUP_README.md`** - This file!
 
 ### Backend Already Implemented
-- ✅ Featured Images Model (`/src/features/featured-image/featured-image.model.js`)
-- ✅ Featured Images Controller (`/src/features/featured-image/featured-image.controller.js`)
-- ✅ Featured Images Routes (`/src/features/featured-image/featured-image.routes.js`)
-- ✅ Integrated into `/src/app.js`
+- ✅ Featured Images Model (`/server/src/features/featured-image/featured-image.model.js`)
+- ✅ Featured Images Controller (`/server/src/features/featured-image/featured-image.controller.js`)
+- ✅ Featured Images Routes (`/server/src/features/featured-image/featured-image.routes.js`)
+- ✅ Integrated into `/server/src/app.js`
 
 ---
 
@@ -575,8 +575,8 @@ Frontend:
 - /client/src/app/components/Herosection.tsx
 
 Backend:
-- /src/features/featured-image/
-- /src/app.js
+- /server/src/features/featured-image/
+- /server/src/app.js
 
 Database:
 - MongoDB collection: featuredimages

@@ -10,8 +10,8 @@ Tier 1 optimizations focus on maximizing single-server capacity by utilizing all
 ## 1. Cluster Mode Implementation ✅
 
 ### What Changed
-- **File Created:** `/src/utils/cluster.util.js` (100+ lines)
-- **File Modified:** `/src/server.js` (cluster initialization added)
+- **File Created:** `/server/src/utils/cluster.util.js` (100+ lines)
+- **File Modified:** `/server/src/server.js` (cluster initialization added)
 
 ### How It Works
 ```javascript
@@ -48,7 +48,7 @@ npm run dev
 ## 2. MongoDB Connection Pool Optimization ✅
 
 ### What Changed
-**File Modified:** `/src/server.js`
+**File Modified:** `/server/src/server.js`
 
 ### Before (Insufficient for 10K users)
 ```javascript
@@ -87,7 +87,7 @@ New capacity: 250 connections
 ## 3. Query Optimization with .lean() ✅
 
 ### What Changed
-**File Modified:** `/src/features/blog/blog.controller.js`
+**File Modified:** `/server/src/features/blog/blog.controller.js`
 
 ### Optimizations Applied
 ```javascript
@@ -131,8 +131,8 @@ New approach (.lean(true)):
 ## 4. Request Deduplication Middleware ✅
 
 ### What Changed
-**File Created:** `/src/middleware/request-deduplication.middleware.js` (60+ lines)
-**File Modified:** `/src/app.js` (middleware integration added)
+**File Created:** `/server/src/middleware/request-deduplication.middleware.js` (60+ lines)
+**File Modified:** `/server/src/app.js` (middleware integration added)
 
 ### How It Works
 ```
@@ -173,7 +173,7 @@ With dedup: 1 DB query, results reused for B & C
 ## 5. Response Compression Enhancement ✅
 
 ### What Changed
-**File Modified:** `/src/app.js`
+**File Modified:** `/server/src/app.js`
 
 ### Before (Basic gzip)
 ```javascript
@@ -298,7 +298,7 @@ autocannon -c 1000 -d 30 http://localhost:5000/api/blogs
 watch -n 1 'curl -s http://localhost:5000/api/cluster/info | jq .'
 
 # Or check Node.js process metrics
-node --expose-gc --inspect=9229 src/server.js
+node --expose-gc --inspect=9229 server/src/server.js
 ```
 
 ---
@@ -353,7 +353,7 @@ curl -X GET http://localhost:5000/api/cluster/info
 ### High Memory Usage
 ```javascript
 // Increase Node.js memory limit
-node --max-old-space-size=2048 src/server.js
+node --max-old-space-size=2048 server/src/server.js
 
 // Or set in .env
 export NODE_OPTIONS="--max-old-space-size=2048"
@@ -375,7 +375,7 @@ export DEBUG=mongoose:query
 npm run start
 
 // Profile with Node debugger
-node --prof src/server.js
+node --prof server/src/server.js
 node --prof-process isolate-*.log > profile.txt
 ```
 
@@ -385,11 +385,11 @@ node --prof-process isolate-*.log > profile.txt
 
 | Optimization | Status | Impact | Implementation |
 |---|---|---|---|
-| Cluster Mode | ✅ Complete | 3.5x throughput | `/src/utils/cluster.util.js` |
-| DB Pool Tuning | ✅ Complete | 1.5x throughput | `/src/server.js` |
+| Cluster Mode | ✅ Complete | 3.5x throughput | `/server/src/utils/cluster.util.js` |
+| DB Pool Tuning | ✅ Complete | 1.5x throughput | `/server/src/server.js` |
 | Query .lean() | ✅ Complete | 1.3x throughput | `blog.controller.js` |
 | Request Dedup | ✅ Complete | 1.5x to endpoints | `request-deduplication.middleware.js` |
-| Response Compression | ✅ Complete | 60-75% bandwidth | `/src/app.js` |
+| Response Compression | ✅ Complete | 60-75% bandwidth | `/server/src/app.js` |
 | **COMBINED** | ✅ Complete | **~10x throughput** | Ready for 4K+ users |
 
 ---
@@ -397,11 +397,11 @@ node --prof-process isolate-*.log > profile.txt
 ## Files Modified in Tier 1
 
 ```
-✅ /src/utils/cluster.util.js (NEW - 100+ lines)
-✅ /src/middleware/request-deduplication.middleware.js (NEW - 60+ lines)
-✅ /src/server.js (MODIFIED - cluster init + pool tuning)
-✅ /src/app.js (MODIFIED - dedup + compression)
-✅ /src/features/blog/blog.controller.js (MODIFIED - .lean() optimizations)
+✅ /server/src/utils/cluster.util.js (NEW - 100+ lines)
+✅ /server/src/middleware/request-deduplication.middleware.js (NEW - 60+ lines)
+✅ /server/src/server.js (MODIFIED - cluster init + pool tuning)
+✅ /server/src/app.js (MODIFIED - dedup + compression)
+✅ /server/src/features/blog/blog.controller.js (MODIFIED - .lean() optimizations)
 ```
 
 ---

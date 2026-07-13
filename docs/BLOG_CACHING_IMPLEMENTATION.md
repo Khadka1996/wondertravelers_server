@@ -41,7 +41,7 @@
 
 ### Step 1: Update Your Blog Routes
 
-**File:** `src/features/blog/blog.routes.js`
+**File:** `server/src/features/blog/blog.routes.js`
 
 Add the caching middleware to your blog routes:
 
@@ -156,7 +156,7 @@ export default router;
 
 ### Step 2: Update Blog Controller Creation
 
-**File:** `src/features/blog/blog.controller.js`
+**File:** `server/src/features/blog/blog.controller.js`
 
 When creating/updating blogs, invalidate related caches:
 
@@ -230,7 +230,7 @@ export const deleteBlog = async (req, res) => {
 
 ### Step 3: Update App Configuration (Optional)
 
-**File:** `src/app.js`
+**File:** `server/src/app.js`
 
 Apply blog caching to all blog routes:
 

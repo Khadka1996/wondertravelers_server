@@ -251,7 +251,7 @@ Edit `/src/components/admin/UsersTable.tsx` - add to `columns` array
 Edit individual modal files in `/src/components/admin/UserActionModals/`
 
 ### Change API Base URL
-Edit `/src/services/admin.ts`:
+Edit `/server/src/services/admin.ts`:
 ```typescript
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 ```

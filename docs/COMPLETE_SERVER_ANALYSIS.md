@@ -868,7 +868,7 @@ server/
 
 ## Detailed Feature Documentation
 
-### Authentication Module (`/src/features/auth`)
+### Authentication Module (`/server/src/features/auth`)
 
 **Purpose:** Handles user registration, login, token management, and security
 
@@ -938,7 +938,7 @@ Response: {
 
 ---
 
-### Blog Module (`/src/features/blog`)
+### Blog Module (`/server/src/features/blog`)
 
 **Purpose:** Complete content management system for blogs
 
@@ -1011,7 +1011,7 @@ Comment Collection:
 
 ---
 
-### Analytics Module (`/src/features/analytics`)
+### Analytics Module (`/server/src/features/analytics`)
 
 **Purpose:** Track user behavior, geographic data, and engagement metrics
 
@@ -1059,7 +1059,7 @@ Comment Collection:
 
 ---
 
-### Backup Module (`/src/features/backup`)
+### Backup Module (`/server/src/features/backup`)
 
 **Purpose:** Safe data backups with encryption and multi-location storage
 
@@ -1116,7 +1116,7 @@ Comment Collection:
 
 ---
 
-### Verification Module (`/src/features/verification`)
+### Verification Module (`/server/src/features/verification`)
 
 **1. Phone Verification**
 - OTP generation and sending
@@ -1149,7 +1149,7 @@ Comment Collection:
 
 ---
 
-### Notification Module (`/src/features/notification`)
+### Notification Module (`/server/src/features/notification`)
 
 **Notification Types:**
 1. Email notifications
@@ -1176,7 +1176,7 @@ Comment Collection:
 
 ---
 
-### Performance Monitoring (`/src/features/perf`)
+### Performance Monitoring (`/server/src/features/perf`)
 
 **Metrics Collected:**
 1. CPU usage

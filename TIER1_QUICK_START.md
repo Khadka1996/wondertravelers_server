@@ -71,13 +71,13 @@ top
 ## Files Changed
 
 ### New Files Created
-- `/src/utils/cluster.util.js` - Cluster mode manager
-- `/src/middleware/request-deduplication.middleware.js` - Dedup middleware
+- `/server/src/utils/cluster.util.js` - Cluster mode manager
+- `/server/src/middleware/request-deduplication.middleware.js` - Dedup middleware
 
 ### Files Modified
-- `/src/server.js` - Added cluster initialization, optimized connection pool
-- `/src/app.js` - Added dedup middleware, optimized compression
-- `/src/features/blog/blog.controller.js` - Optimized .lean() queries
+- `/server/src/server.js` - Added cluster initialization, optimized connection pool
+- `/server/src/app.js` - Added dedup middleware, optimized compression
+- `/server/src/features/blog/blog.controller.js` - Optimized .lean() queries
 - `package.json` - Added new startup scripts
 
 ---
@@ -212,7 +212,7 @@ echo $ENABLE_CLUSTER
 curl http://localhost:5000/api/cluster/info | jq '.db.pool'
 
 # If "maxPoolSize" is still 60, check server.js initialization
-grep -n "maxPoolSize" src/server.js
+grep -n "maxPoolSize" server/src/server.js
 # Should show: 250 (not 60)
 
 # Restart with export:
@@ -301,13 +301,13 @@ npm run start:prod 2>&1 | tee server.log
 lsof -i :5000
 
 # Kill process if stuck
-pkill -f "node src/server.js"
+pkill -f "node server/src/server.js"
 
 # View cluster details
 curl -s http://localhost:5000/api/cluster/info | jq .
 
 # Profile memory usage
-node --expose-gc src/server.js
+node --expose-gc server/src/server.js
 # Then in another terminal:
 node --prof-process isolate-*.log > profile.txt
 ```

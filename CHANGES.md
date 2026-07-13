@@ -9,7 +9,7 @@
 
 ## Files Created (2)
 
-### 1. `/src/utils/cluster.util.js` (NEW - 100+ lines)
+### 1. `/server/src/utils/cluster.util.js` (NEW - 100+ lines)
 **Purpose:** Multi-core cluster management
 **What it does:**
 - Detects available CPU cores
@@ -26,7 +26,7 @@
 
 ---
 
-### 2. `/src/middleware/request-deduplication.middleware.js` (NEW - 60+ lines)
+### 2. `/server/src/middleware/request-deduplication.middleware.js` (NEW - 60+ lines)
 **Purpose:** Prevent duplicate request storms
 **What it does:**
 - Intercepts GET/HEAD requests
@@ -45,7 +45,7 @@
 
 ## Files Modified (4)
 
-### 1. `/src/server.js` (MODIFIED)
+### 1. `/server/src/server.js` (MODIFIED)
 
 #### Change A: Cluster Initialization
 **Location:** Top of file (after imports)
@@ -85,7 +85,7 @@ maxIdleTimeMS: isProd ? 15000 : 30000
 
 ---
 
-### 2. `/src/app.js` (MODIFIED)
+### 2. `/server/src/app.js` (MODIFIED)
 
 #### Change A: Request Deduplication Middleware Import
 **Location:** Import section
@@ -130,7 +130,7 @@ app.use(compression({
 
 ---
 
-### 3. `/src/features/blog/blog.controller.js` (MODIFIED)
+### 3. `/server/src/features/blog/blog.controller.js` (MODIFIED)
 
 #### Changes: Query Optimization with .lean()
 **Location:** Multiple read-only query methods
@@ -174,20 +174,20 @@ app.use(compression({
 "scripts": {
   // Original:
   "test": "...",
-  "start": "node src/server.js",
-  "dev": "nodemon src/server.js",
+  "start": "node server/src/server.js",
+  "dev": "nodemon server/src/server.js",
   
   // NEW - Production cluster mode:
-  "start:prod": "NODE_ENV=production ENABLE_CLUSTER=true node src/server.js",
+  "start:prod": "NODE_ENV=production ENABLE_CLUSTER=true node server/src/server.js",
   
   // NEW - Explicit cluster:
-  "start:cluster": "NODE_ENV=production ENABLE_CLUSTER=true node src/server.js",
+  "start:cluster": "NODE_ENV=production ENABLE_CLUSTER=true node server/src/server.js",
   
   // NEW - Development mode:
-  "start:dev": "NODE_ENV=development node src/server.js",
+  "start:dev": "NODE_ENV=development node server/src/server.js",
   
   // NEW - Dev with production config:
-  "dev:prod": "NODE_ENV=production nodemon src/server.js"
+  "dev:prod": "NODE_ENV=production nodemon server/src/server.js"
 }
 ```
 
@@ -247,13 +247,13 @@ All optimizations are:
    - Analyzed database and caching
 
 2. **Created cluster utility** (10 mins)
-   - Wrote `/src/utils/cluster.util.js`
+   - Wrote `/server/src/utils/cluster.util.js`
    - Multi-worker process spawning
    - Auto-respawn on crash
    - Cluster info endpoint
 
 3. **Created dedup middleware** (10 mins)
-   - Wrote `/src/middleware/request-deduplication.middleware.js`
+   - Wrote `/server/src/middleware/request-deduplication.middleware.js`
    - Request caching mechanism
    - Cache invalidation logic
 

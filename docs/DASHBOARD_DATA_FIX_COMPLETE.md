@@ -198,7 +198,7 @@ Expected response:
 | Dashboard still shows zeros | Check browser console for errors, verify backend is returning data |
 | API returns timeout | One query is hanging, check backend logs for which query fails |
 | 401 Unauthorized error | That's OK! Frontend falls back to debug endpoint automatically |
-| Backend won't start | Check Node syntax: `node -c src/features/admin/admin.controller.js` |
+| Backend won't start | Check Node syntax: `node -c server/src/features/admin/admin.controller.js` |
 | Ports already in use | Kill existing processes: `pkill -9 node npm` |
 
 ---

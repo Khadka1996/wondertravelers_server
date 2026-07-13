@@ -44,7 +44,7 @@ Welcome! This index will help you navigate all the documentation and code change
 ## 🔧 Modified Source Files
 
 ### Blog Feature
-1. **src/features/blog/blog.model.js**
+1. **server/src/features/blog/blog.model.js**
    - ✅ Added composite indexes
    - ✅ Granular cache invalidation
    - ✅ Atomic engagement methods
@@ -52,22 +52,22 @@ Welcome! This index will help you navigate all the documentation and code change
    - ✅ N+1 query fix
    - **Key Changes**: Lines 218-238, 350-407, 427-476, 571-588, 789-841
 
-2. **src/features/blog/blog.controller.js**
+2. **server/src/features/blog/blog.controller.js**
    - ✅ Atomic view increment
    - ✅ Added .lean() for memory efficiency
    - **Key Changes**: Lines 620-650
 
-3. **src/features/blog/blog.routes.js**
+3. **server/src/features/blog/blog.routes.js**
    - ✅ Rate limiting on engagement
    - ✅ Protected endpoints
    - **Key Changes**: Lines 5, 47-56, 211-213
 
 ### Destination Feature
-4. **src/features/destination/destination.model.js**
+4. **server/src/features/destination/destination.model.js**
    - ✅ Sparse indexes for data integrity
    - **Key Changes**: Lines 5-19
 
-5. **src/features/destination/destination.controller.js**
+5. **server/src/features/destination/destination.controller.js**
    - ✅ MongoDB text search
    - ✅ Added .lean() for efficiency
    - **Key Changes**: Lines 39-61
@@ -273,7 +273,7 @@ Project Root/
 │
 ├── server/
 │   ├── DEPLOYMENT_GUIDE.md
-│   ├── src/features/
+│   ├── server/src/features/
 │   │   ├── blog/
 │   │   │   ├── blog.model.js ..................... ✅ Modified
 │   │   │   ├── blog.controller.js ............... ✅ Modified

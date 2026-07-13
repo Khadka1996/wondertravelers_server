@@ -46,7 +46,7 @@ This guide outlines all the SEO improvements implemented for the WONDER Traveler
 - Sitemap references
 
 ### 5. **Structured Data (JSON-LD)** ✅
-- **Utility Functions** (`src/utils/seoUtils.ts`)
+- **Utility Functions** (`server/src/utils/seoUtils.ts`)
   - `generateSEOMetadata()` - Metadata generator
   - `generateBreadcrumb()` - Breadcrumb schema
   - `generateOrganizationSchema()` - Organization schema
@@ -265,7 +265,7 @@ export function Page() {
 - `src/app/sitemap-videos/route.ts` - Video sitemap
 - `src/app/sitemap.xml/route.ts` - Sitemap index
 - `src/app/sitemap/page.tsx` - HTML sitemap
-- `src/utils/seoUtils.ts` - SEO utilities
+- `server/src/utils/seoUtils.ts` - SEO utilities
 - `src/components/StructuredData.tsx` - Structured data component
 - `src/components/Breadcrumb.tsx` - Breadcrumb component
 - `public/robots.txt` - Robots configuration
