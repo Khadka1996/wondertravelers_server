@@ -33,6 +33,7 @@ import {
   getMostViewed,
   getMostLiked,
   incrementBlogView,
+  incrementBlogShare,
 } from './blog.controller.js';
 import {
   getCommentsForBlog,
@@ -99,8 +100,10 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 15 * 1024 * 1024,
     files: 1,
+    fieldSize: 25 * 1024 * 1024,
+    parts: 50,
   },
 });
 
@@ -109,13 +112,19 @@ const handleMulterError = (middleware) => {
     middleware(req, res, (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ success: false, error: 'File is too large. Maximum size is 5MB.' });
+          return res.status(400).json({ success: false, error: 'File is too large. Maximum size is 15MB.' });
         }
-        return res.status(400).json({ success: false, error: err.message });
+        if (err.code === 'LIMIT_FIELD_VALUE') {
+          return res.status(400).json({ success: false, error: 'A form field is too large. Please reduce the article body or image payload and try again.' });
+        }
+        if (err.code === 'LIMIT_PART_COUNT') {
+          return res.status(400).json({ success: false, error: 'The request has too many parts. Please reduce the number of attachments and try again.' });
+        }
+        return res.status(400).json({ success: false, error: err.message || 'Upload failed.' });
       }
 
       if (err) {
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(400).json({ success: false, error: err.message || 'Upload failed.' });
       }
 
       next();
@@ -222,6 +231,9 @@ router.post('/:id/like', (req, res, next) => authMiddleware.protect(req, res, ne
 
 // ⚡ NEW: Increment blog view count (public, rate-limited by engagement limiter)
 router.post('/:id/view', engagementLimiter, incrementBlogView);
+
+// ⚡ NEW: Increment blog share count (public)
+router.post('/:id/share', engagementLimiter, incrementBlogShare);
 
 // Get blog engagement metrics
 router.get('/:id/engagement', getBlogEngagement);

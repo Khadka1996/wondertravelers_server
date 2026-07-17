@@ -27,7 +27,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 15 * 1024 * 1024, fieldSize: 25 * 1024 * 1024, parts: 20 }, // 15MB local limit
   fileFilter: (req, file, cb) => {
     // Accept image files only
     if (file.mimetype.startsWith('image/')) {
@@ -43,8 +43,8 @@ const handleMulterError = (middleware) => {
   return (req, res, next) => {
     middleware(req, res, (err) => {
       if (err instanceof multer.MulterError) {
-        if (err.code === 'FILE_TOO_LARGE') {
-          return res.status(400).json({ error: 'File is too large. Maximum size is 5MB' });
+        if (err.code === 'LIMIT_FILE_SIZE' || err.code === 'FILE_TOO_LARGE') {
+          return res.status(400).json({ error: 'File is too large. Maximum size is 15MB.' });
         }
         return res.status(400).json({ error: err.message });
       } else if (err) {

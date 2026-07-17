@@ -5,6 +5,23 @@ import { logger } from '../../utils/logger.util.js';
 const CACHE_TTL = 3600; // 1 hour for destinations
 const FEATURED_CACHE_TTL = 7200; // 2 hours for featured
 
+const normalizeSort = (sortValue) => {
+  switch (sortValue) {
+    case 'featured':
+      return { featured: -1, createdAt: -1 };
+    case 'rating':
+      return { rating: -1, reviewCount: -1, createdAt: -1 };
+    case 'alphabetical':
+      return { name: 1 };
+    case 'oldest':
+      return { createdAt: 1 };
+    case 'newest':
+    case '-createdAt':
+    default:
+      return { createdAt: -1 };
+  }
+};
+
 /**
  * @desc   Get all published destinations (with filters & pagination)
  * @route  GET /api/destinations/public
@@ -13,11 +30,15 @@ const FEATURED_CACHE_TTL = 7200; // 2 hours for featured
  */
 export const getDestinations = async (req, res) => {
   try {
-    const { category, skip = 0, limit = 12, sort = '-createdAt', search } = req.query;
+    const { category, skip = 0, limit = 12, sort = 'newest', search } = req.query;
 
     const normalizedCategory = category && category !== 'All' ? category : 'All';
     const normalizedSearch = search && search.trim() ? search.trim() : '';
-    const cacheKey = `destinations:public:category:${normalizedCategory}:skip:${skip}:limit:${limit}:sort:${sort}:search:${normalizedSearch}`;
+    const safeSkip = Math.max(parseInt(skip) || 0, 0);
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 12, 1), 24);
+    const normalizedSort = normalizeSort(sort);
+    const sortKey = typeof normalizedSort === 'string' ? normalizedSort : JSON.stringify(normalizedSort);
+    const cacheKey = `destinations:public:category:${normalizedCategory}:skip:${safeSkip}:limit:${safeLimit}:sort:${sortKey}:search:${normalizedSearch}`;
 
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
@@ -61,9 +82,9 @@ export const getDestinations = async (req, res) => {
     // Execute query - ⚡ OPTIMIZED: Added .lean() for memory efficiency
     const destinations = await Destination.find(filters)
       .select('name slug category shortDesc image rating reviewCount featured _id')
-      .skip(parseInt(skip))
-      .limit(parseInt(limit))
-      .sort(sort)
+      .skip(safeSkip)
+      .limit(safeLimit)
+      .sort(normalizedSort)
       .lean();
 
     console.log(`✅ Destinations fetched: ${destinations.length} out of ${total} total`);

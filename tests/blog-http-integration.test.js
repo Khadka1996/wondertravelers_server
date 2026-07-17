@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import dotenv from 'dotenv';
 import { performance } from 'node:perf_hooks';
+import { incrementBlogShare } from '../src/features/blog/blog.controller.js';
 
 dotenv.config({ path: new URL('../.env', import.meta.url).pathname });
 // Ensure required env vars to avoid app.js exit
@@ -90,6 +91,49 @@ const app = appMod.default;
 
 let server;
 let baseUrl;
+
+test('incrementBlogShare increments shares for a blog', async () => {
+  const shareCalls = [];
+  Blog.findByIdAndUpdate = (id, update, options = {}) => {
+    shareCalls.push({ id, update, options });
+    const result = { _id: id, title: 'Demo blog', slug: 'demo-blog', shares: 4 };
+    return {
+      select() {
+        return result;
+      },
+      then(resolve) {
+        return Promise.resolve(result).then(resolve);
+      }
+    };
+  };
+
+  const req = {
+    params: { id: '507f1f77bcf86cd799439011' },
+    user: null,
+    headers: {},
+    cookies: {}
+  };
+  const res = {
+    statusCode: null,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      return this;
+    }
+  };
+
+  await incrementBlogShare(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.data.shares, 4);
+  assert.equal(shareCalls.length, 1);
+  assert.deepEqual(shareCalls[0].update, { $inc: { shares: 1 } });
+});
 
 test('HTTP integration: pagination, cache, moderator-delete', async (t) => {
   // start server on ephemeral port

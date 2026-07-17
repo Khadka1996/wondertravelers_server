@@ -805,19 +805,50 @@ export const getNews = async (req, res) => {
  */
 export const getAllBlogsForAdmin = async (req, res) => {
   try {
-    console.log('🔍 getAllBlogsForAdmin called - fetching ALL blogs without filters');
+    console.log('🔍 getAllBlogsForAdmin called - fetching admin blogs with filters');
     const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
+    const { status, type, search } = req.query;
+
+    const filter = {};
+
+    if (status) {
+      const statusValues = String(status).split(',').map(value => value.trim()).filter(Boolean);
+      if (statusValues.length > 0) {
+        filter.status = { $in: statusValues };
+      }
+    }
+
+    if (type) {
+      const typeValues = String(type).split(',').map(value => value.trim()).filter(Boolean);
+      if (typeValues.length > 0) {
+        filter.type = { $in: typeValues };
+      }
+    }
+
+    if (search) {
+      const searchTerm = String(search).trim();
+      if (searchTerm.length > 0) {
+        const searchRegex = new RegExp(searchTerm, 'i');
+        filter.$or = [
+          { title: searchRegex },
+          { subHeading: searchRegex },
+          { content: searchRegex }
+        ];
+      }
+    }
+
+    console.log('🔎 Admin filter:', filter);
 
     const [blogs, totalBlogs] = await Promise.all([
-      Blog.find({}) // No filters - get all blogs
-        .select('title slug content subHeading featuredImage author category views likesCount publishedAt status type isFeatured isBreaking createdAt updatedAt')
+      Blog.find(filter)
+        .select('title slug content subHeading featuredImage author category views likesCount shares publishedAt status type isFeatured isBreaking createdAt updatedAt')
         .populate('author', 'name profileImage')
         .populate('category', 'name slug')
         .sort({ createdAt: -1 }) // Sort by newest created first
         .skip(skip)
         .limit(limit)
         .lean(),
-      Blog.countDocuments({}) // Count all blogs
+      Blog.countDocuments(filter)
     ]);
 
     console.log(`📊 Total blogs found: ${totalBlogs}, Returned: ${blogs.length}`);
@@ -901,13 +932,22 @@ export const createBlog = async (req, res) => {
 
     // Validate required fields
     if (!title || !title.trim()) {
-      return res.status(400).json({ success: false, error: 'Title is required' });
+      return res.status(400).json({ success: false, error: 'Title is required.' });
+    }
+    if (title.trim().length < 5) {
+      return res.status(400).json({ success: false, error: 'Title must be at least 5 characters long.' });
     }
     if (!content || !content.trim()) {
-      return res.status(400).json({ success: false, error: 'Content is required' });
+      return res.status(400).json({ success: false, error: 'Content is required.' });
+    }
+    if (content.trim().length < 80) {
+      return res.status(400).json({ success: false, error: 'Content is too short. Please add at least 80 characters.' });
+    }
+    if (content.trim().length > 60000) {
+      return res.status(400).json({ success: false, error: 'Content is too long. Maximum is 60,000 characters.' });
     }
     if (!category) {
-      return res.status(400).json({ success: false, error: 'Category is required' });
+      return res.status(400).json({ success: false, error: 'Category is required.' });
     }
 
     subHeading = typeof subHeading === 'string' ? subHeading.trim() : '';
@@ -1064,13 +1104,22 @@ export const updateBlog = async (req, res) => {
 
     // Validate required fields
     if (title && !title.trim()) {
-      return res.status(400).json({ success: false, error: 'Title cannot be empty' });
+      return res.status(400).json({ success: false, error: 'Title cannot be empty.' });
+    }
+    if (title && title.trim().length < 5) {
+      return res.status(400).json({ success: false, error: 'Title must be at least 5 characters long.' });
     }
     if (subHeading && !subHeading.trim()) {
-      return res.status(400).json({ success: false, error: 'Sub-heading cannot be empty' });
+      return res.status(400).json({ success: false, error: 'Sub-heading cannot be empty.' });
     }
     if (content && !content.trim()) {
-      return res.status(400).json({ success: false, error: 'Content cannot be empty' });
+      return res.status(400).json({ success: false, error: 'Content cannot be empty.' });
+    }
+    if (content && content.trim().length < 80) {
+      return res.status(400).json({ success: false, error: 'Content is too short. Please add at least 80 characters.' });
+    }
+    if (content && content.trim().length > 60000) {
+      return res.status(400).json({ success: false, error: 'Content is too long. Maximum is 60,000 characters.' });
     }
 
     // Build updates object
@@ -1829,5 +1878,51 @@ export const incrementBlogView = async (req, res) => {
   } catch (error) {
     console.error('Error incrementing blog view:', error);
     res.status(500).json({ success: false, message: 'Failed to increment view count' });
+  }
+};
+
+/**
+ * @desc   Increment share count for a blog post
+ * @route  POST /api/blogs/:id/share
+ * @access Public
+ */
+export const incrementBlogShare = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Blog ID is required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid blog ID format' });
+    }
+
+    const blog = await Blog.findByIdAndUpdate(
+      id,
+      { $inc: { shares: 1 } },
+      { new: true }
+    ).select('_id shares title slug');
+
+    if (!blog) {
+      return res.status(404).json({ success: false, message: 'Blog not found' });
+    }
+
+    await cache.del(`blogs:trending`);
+    await cache.del(`blogs:engagement:trending`);
+    await cache.del(`blogs:slug:${blog.slug}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Share count incremented',
+      data: {
+        _id: blog._id,
+        shares: blog.shares,
+        title: blog.title
+      }
+    });
+  } catch (error) {
+    console.error('Error incrementing blog share:', error);
+    res.status(500).json({ success: false, message: 'Failed to increment share count' });
   }
 };

@@ -198,9 +198,11 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
   storage,
-  limits: { 
-    fileSize: 5 * 1024 * 1024, // 5MB limit (MUST match app.js MAX_JSON_SIZE)
-    files: 1 // Only one file
+  limits: {
+    fileSize: 15 * 1024 * 1024, // 15MB local limit for larger images/uploads
+    files: 1, // Only one file
+    fieldSize: 25 * 1024 * 1024, // Allow large rich-text/article content bodies
+    parts: 50 // Allow a few form parts alongside the file payload
   },
   fileFilter,
 });
