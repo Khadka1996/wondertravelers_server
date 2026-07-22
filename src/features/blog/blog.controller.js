@@ -943,9 +943,6 @@ export const createBlog = async (req, res) => {
     if (content.trim().length < 80) {
       return res.status(400).json({ success: false, error: 'Content is too short. Please add at least 80 characters.' });
     }
-    if (content.trim().length > 60000) {
-      return res.status(400).json({ success: false, error: 'Content is too long. Maximum is 60,000 characters.' });
-    }
     if (!category) {
       return res.status(400).json({ success: false, error: 'Category is required.' });
     }
@@ -1117,9 +1114,6 @@ export const updateBlog = async (req, res) => {
     }
     if (content && content.trim().length < 80) {
       return res.status(400).json({ success: false, error: 'Content is too short. Please add at least 80 characters.' });
-    }
-    if (content && content.trim().length > 60000) {
-      return res.status(400).json({ success: false, error: 'Content is too long. Maximum is 60,000 characters.' });
     }
 
     // Build updates object
