@@ -100,10 +100,11 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 15 * 1024 * 1024,
+    // Allow larger featured image uploads and larger blog body fields
+    fileSize: 50 * 1024 * 1024,      // 50MB per image file
     files: 1,
-    fieldSize: 25 * 1024 * 1024,
-    parts: 50,
+    fieldSize: 100 * 1024 * 1024,    // 100MB per field (for long article content)
+    parts: 150,                        // Support more form fields
   },
 });
 
@@ -112,13 +113,13 @@ const handleMulterError = (middleware) => {
     middleware(req, res, (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ success: false, error: 'File is too large. Maximum size is 15MB.' });
+          return res.status(400).json({ success: false, error: 'Featured image is too large. Maximum file size is 50MB.' });
         }
         if (err.code === 'LIMIT_FIELD_VALUE') {
-          return res.status(400).json({ success: false, error: 'A form field is too large. Please reduce the article body or image payload and try again.' });
+          return res.status(400).json({ success: false, error: 'Article content or form data is too large. Maximum field size is 100MB. Please reduce your article length or image size and try again.' });
         }
         if (err.code === 'LIMIT_PART_COUNT') {
-          return res.status(400).json({ success: false, error: 'The request has too many parts. Please reduce the number of attachments and try again.' });
+          return res.status(400).json({ success: false, error: 'The request has too many form fields. Maximum 150 fields allowed. Please reduce the number of fields and try again.' });
         }
         return res.status(400).json({ success: false, error: err.message || 'Upload failed.' });
       }

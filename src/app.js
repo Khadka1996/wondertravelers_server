@@ -313,8 +313,8 @@ app.use(compression({
   }
 }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: process.env.URL_ENCODED_BODY_LIMIT || '100mb' }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
 // ========================
