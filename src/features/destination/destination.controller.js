@@ -287,7 +287,25 @@ export const getDestinationBySlug = async (req, res) => {
  */
 export const createDestination = async (req, res) => {
   try {
-    const { name, category, shortDesc, longDesc, image, featured = false, published = false } = req.body;
+    const {
+      name,
+      category,
+      shortDesc,
+      longDesc,
+      image,
+      featured = false,
+      published = false,
+      gallery,
+      location,
+      bestTime,
+      bestToVisit,
+      routes,
+      activities,
+      difficulty,
+      duration,
+      altitude,
+      seo
+    } = req.body;
 
     // Validate required fields
     if (!name || !category || !shortDesc || !image) {
@@ -313,6 +331,22 @@ export const createDestination = async (req, res) => {
       });
     }
 
+    const defaultSeo = {
+      metaTitle: `${name} | ${category}`,
+      metaDescription: shortDesc,
+      keywords: Array.from(
+        new Set(
+          [
+            ...name.split(/\s+/),
+            ...category.split(/\s*[,&]\s*|\s+/),
+            ...shortDesc.split(/\s+/)
+          ]
+            .map(word => word.replace(/[^\w-]/g, '').toLowerCase())
+            .filter(Boolean)
+        )
+      ).slice(0, 12)
+    };
+
     const destination = new Destination({
       name,
       slug,
@@ -320,6 +354,16 @@ export const createDestination = async (req, res) => {
       shortDesc,
       longDesc,
       image,
+      gallery,
+      location,
+      bestTime,
+      bestToVisit,
+      routes,
+      activities,
+      difficulty,
+      duration,
+      altitude,
+      seo: seo || defaultSeo,
       featured,
       published,
       createdBy: req.user._id

@@ -68,26 +68,68 @@ router.get(
 );
 
 // Create new destination
-const createDestinationSchema = z.object({
+const routeSchema = z.object({
   name: z.string().min(3).max(100),
   category: z.enum(['Mountains', 'Lakes & Adventure', 'Cultural Heritage', 'Trekking', 'Wildlife & Jungle', 'Other']),
-  shortDesc: z.string().min(10).max(200),
-  longDesc: z.string().max(2000).optional(),
+  shortDesc: z.string().min(1),
+  longDesc: z.string().optional(),
   image: z.object({
-    url: z.string().url(),
+    url: z.string().min(1),
     size: z.number().optional(),
     width: z.number().optional(),
     height: z.number().optional()
   }),
   featured: z.boolean().optional(),
-  published: z.boolean().optional()
+  published: z.boolean().optional(),
+  gallery: z.array(z.object({
+    url: z.string().min(1),
+    caption: z.string().optional(),
+    order: z.number().optional()
+  })).optional(),
+  location: z.object({
+    region: z.string().optional(),
+    coordinates: z.object({
+      type: z.string().optional(),
+      coordinates: z.array(z.number()).optional()
+    }).optional()
+  }).optional(),
+  bestTime: z.string().optional(),
+  bestToVisit: z.object({
+    months: z.array(z.string()).optional(),
+    description: z.string().optional()
+  }).optional(),
+  routes: z.array(z.object({
+    name: z.string().optional(),
+    startingPoint: z.string().optional(),
+    endingPoint: z.string().optional(),
+    waypoints: z.array(z.string()).optional(),
+    distance: z.number().optional(),
+    estimatedDays: z.number().optional(),
+    description: z.string().optional(),
+    difficulty: z.enum(['Easy', 'Moderate', 'Challenging', 'Extreme']).optional()
+  })).optional(),
+  activities: z.array(z.string().max(100)).optional(),
+  difficulty: z.enum(['Easy', 'Moderate', 'Challenging', 'Extreme']).optional(),
+  duration: z.object({
+    min: z.number().optional(),
+    max: z.number().optional()
+  }).optional(),
+  altitude: z.object({
+    min: z.number().optional(),
+    max: z.number().optional()
+  }).optional(),
+  seo: z.object({
+    metaTitle: z.string().optional(),
+    metaDescription: z.string().optional(),
+    keywords: z.array(z.string()).optional()
+  }).optional()
 });
 
 router.post(
   '/',
   authMiddleware.protect,
   authMiddleware.restrictTo('admin', 'super-admin'),
-  validate(createDestinationSchema, 'body'),
+  validate(routeSchema, 'body'),
   createDestination
 );
 
