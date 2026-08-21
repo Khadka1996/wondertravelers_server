@@ -603,7 +603,7 @@ blogSchema.methods.getRelatedPosts = async function(limit = 3) {
 blogSchema.statics.getFeaturedPosts = async function(limit = 5) {
   return this.find({ 
     isFeatured: true, 
-    status: 'published' 
+    status: 'published'
   })
     .select('title slug excerpt featuredImage author publishedAt views')
     .populate('author', 'name profileImage')
@@ -637,7 +637,9 @@ blogSchema.statics.getSimilarBlogs = async function(id, limit = 5) {
 blogSchema.statics.getBreakingNews = async function(limit = 3) {
   return this.find({ 
     isBreaking: true, 
-    status: 'published' 
+    status: 'published',
+    isFeatured: false,
+    breakingExpiresAt: { $gt: new Date() }
   })
     .select('title slug publishedAt category')
     .populate('category', 'name slug')

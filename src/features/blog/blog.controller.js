@@ -110,7 +110,8 @@ const invalidateBlogCache = async (type = 'both') => {
     if (type === 'both' || type === 'news') {
       patterns.push(
         'blogs:news:*',
-        'blogs:breaking:*'
+        'blogs:breaking:*',
+        'blogs:featured:*'
       );
     }
     
@@ -562,6 +563,7 @@ export const getBlogs = async (req, res) => {
     }
     
     // ⏰ Exclude expired breaking news (auto-expired after 24h)
+    filter.isFeatured = false;
     filter.$or = [
       { isBreaking: false },
       { isBreaking: true, breakingExpiresAt: { $gt: new Date() } }
@@ -575,15 +577,15 @@ export const getBlogs = async (req, res) => {
       case 'trending':
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         filter.publishedAt = { $gte: sevenDaysAgo };
-        sortOrder = { isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { views: -1, publishedAt: -1, createdAt: -1 };
         console.log(`🔥 Trending sort (${blogType}): ${JSON.stringify(sortOrder)}`);
         break;
       case 'mostViewed':
-        sortOrder = { isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { views: -1, publishedAt: -1, createdAt: -1 };
         console.log(`👁️ Most viewed sort (${blogType}): ${JSON.stringify(sortOrder)}`);
         break;
       case 'mostLiked':
-        sortOrder = { isFeatured: -1, likesCount: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { likesCount: -1, publishedAt: -1, createdAt: -1 };
         console.log(`❤️ Most liked sort (${blogType}): ${JSON.stringify(sortOrder)}`);
         break;
       case 'oldest':
@@ -591,7 +593,7 @@ export const getBlogs = async (req, res) => {
         console.log(`📅 Oldest sort (${blogType}): ${JSON.stringify(sortOrder)}`);
         break;
       default: // 'latest'
-        sortOrder = { isFeatured: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { publishedAt: -1, createdAt: -1 };
         console.log(`⏱️ Latest sort (DEFAULT, ${blogType}): ${JSON.stringify(sortOrder)}`);
     }
 
@@ -701,6 +703,7 @@ export const getNews = async (req, res) => {
     }
 
     // ⏰ Exclude expired breaking news (auto-expired after 24h)
+    filter.isFeatured = false;
     filter.$or = [
       { isBreaking: false },
       { isBreaking: true, breakingExpiresAt: { $gt: new Date() } }
@@ -715,15 +718,15 @@ export const getNews = async (req, res) => {
         // Most viewed recent news (last 7 days)
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         filter.publishedAt = { $gte: sevenDaysAgo };
-        sortOrder = { isBreaking: -1, isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { isBreaking: -1, views: -1, publishedAt: -1, createdAt: -1 };
         console.log(`🔥 Trending sort: ${JSON.stringify(sortOrder)}`);
         break;
       case 'mostViewed':
-        sortOrder = { isBreaking: -1, isFeatured: -1, views: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { isBreaking: -1, views: -1, publishedAt: -1, createdAt: -1 };
         console.log(`👁️ Most viewed sort: ${JSON.stringify(sortOrder)}`);
         break;
       case 'mostLiked':
-        sortOrder = { isBreaking: -1, isFeatured: -1, likesCount: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { isBreaking: -1, likesCount: -1, publishedAt: -1, createdAt: -1 };
         console.log(`❤️ Most liked sort: ${JSON.stringify(sortOrder)}`);
         break;
       case 'oldest':
@@ -731,7 +734,7 @@ export const getNews = async (req, res) => {
         console.log(`📅 Oldest sort: ${JSON.stringify(sortOrder)}`);
         break;
       default: // 'latest' (default)
-        sortOrder = { isBreaking: -1, isFeatured: -1, publishedAt: -1, createdAt: -1 };
+        sortOrder = { isBreaking: -1, publishedAt: -1, createdAt: -1 };
         console.log(`⏱️ Latest sort (DEFAULT): ${JSON.stringify(sortOrder)}`);
     }
 

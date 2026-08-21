@@ -3,6 +3,10 @@ import cache from '../../utils/cache.util.js';
 
 const CACHE_TTL = 3600; // 1 hour
 
+const invalidateAdvertisementCache = async () => {
+  await cache.delPattern('advertisements:*');
+};
+
 /**
  * Get advertisements by position (public)
  * GET /api/advertisements/position/:position
@@ -24,16 +28,21 @@ export const getAdsByPosition = async (req, res) => {
 
     // Validate position
     const validPositions = [
-      'homepage_top', 'homepage_banner', 'homepage_bottom',
+      'homepage_top', 'homepage_banner', 'homepage_bottom', 'premium',
       'photo_top', 'photo_bottom', 'photo_sidebar',
       'video_top', 'video_bottom', 'video_sidebar',
+      'above_videosection', 'below_videosection',
       'destination_top', 'destination_sidebar_1', 'destination_sidebar_2',
+      'sidebar_exploresection',
       'destination_inside',
       'explore_top', 'explore_bottom',
       'blog_top', 'blog_bottom', 'blog_sidebar', 'blog_sidebar_1', 'blog_sidebar_2', 'blog_popup', 
       'blog_content_paragraph_1', 'blog_content_paragraph_2', 'blog_content_paragraph_3',
       'blog_content_paragraph_4', 'blog_content_paragraph_6', 'blog_content_paragraph_8', 
+      'above_blogsection', 'below_blogsection', 'sidebar_blogsection',
       'news_top', 'news_bottom', 'news_sidebar',
+      'above_latest', 'below_latest', 'latest_sidebar',
+      'above_photosection', 'below_photosection', 'above_getinsection',
       'footer'
     ];
 
@@ -159,6 +168,7 @@ export const createAd = async (req, res) => {
     });
 
     await ad.save();
+    await invalidateAdvertisementCache();
 
     res.status(201).json({
       success: true,
@@ -194,6 +204,8 @@ export const updateAd = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Ad not found' });
     }
 
+    await invalidateAdvertisementCache();
+
     res.json({
       success: true,
       message: 'Advertisement updated',
@@ -215,6 +227,8 @@ export const deleteAd = async (req, res) => {
     if (!ad) {
       return res.status(404).json({ success: false, message: 'Ad not found' });
     }
+
+    await invalidateAdvertisementCache();
 
     res.json({ success: true, message: 'Advertisement deleted' });
   } catch (error) {

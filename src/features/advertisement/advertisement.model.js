@@ -33,21 +33,28 @@ const advertisementSchema = new mongoose.Schema(
         'homepage_top',
         'homepage_banner',
         'homepage_bottom',
+        'premium',
         'photo_top',
         'photo_bottom',
         'photo_sidebar',
         'video_top',
         'video_bottom',
         'video_sidebar',
+        'above_videosection',
+        'below_videosection',
         'destination_top',
         'destination_sidebar_1',
         'destination_sidebar_2',
+        'sidebar_exploresection',
         'destination_inside',
         'explore_top',
         'explore_bottom',
         'blog_top',
         'blog_bottom',
         'blog_sidebar',
+        'above_blogsection',
+        'below_blogsection',
+        'sidebar_blogsection',
         'blog_sidebar_1',
         'blog_sidebar_2',
         'blog_popup',
@@ -60,6 +67,12 @@ const advertisementSchema = new mongoose.Schema(
         'news_top',
         'news_bottom',
         'news_sidebar',
+        'above_latest',
+        'below_latest',
+        'latest_sidebar',
+        'above_photosection',
+        'below_photosection',
+        'above_getinsection',
         'footer'
       ],
       required: true,
@@ -95,7 +108,7 @@ advertisementSchema.index({ position: 1, isActive: 1 });
 advertisementSchema.post('save', async function () {
   try {
     const cache = (await import('../../utils/cache.util.js')).default;
-    await cache.del('advertisements:*');
+    await cache.delPattern('advertisements:*');
   } catch (err) {
     // Silently fail cache invalidation
   }
@@ -107,7 +120,17 @@ advertisementSchema.post('save', async function () {
 advertisementSchema.post('findByIdAndDelete', async function () {
   try {
     const cache = (await import('../../utils/cache.util.js')).default;
-    await cache.del('advertisements:*');
+    await cache.delPattern('advertisements:*');
+  } catch (err) {
+    // Silently fail cache invalidation
+  }
+});
+
+// Clear position caches when an advertisement is edited.
+advertisementSchema.post('findOneAndUpdate', async function () {
+  try {
+    const cache = (await import('../../utils/cache.util.js')).default;
+    await cache.delPattern('advertisements:*');
   } catch (err) {
     // Silently fail cache invalidation
   }
