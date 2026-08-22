@@ -36,7 +36,7 @@ export const getAdsByPosition = async (req, res) => {
       'sidebar_exploresection',
       'destination_inside',
       'explore_top', 'explore_bottom',
-      'blog_top', 'blog_bottom', 'blog_sidebar', 'blog_sidebar_1', 'blog_sidebar_2', 'blog_popup', 
+      'blog_top', 'blog_bottom', 'blog_sidebar', 'blog_popup', 
       'blog_content_paragraph_1', 'blog_content_paragraph_2', 'blog_content_paragraph_3',
       'blog_content_paragraph_4', 'blog_content_paragraph_6', 'blog_content_paragraph_8', 
       'above_blogsection', 'below_blogsection', 'sidebar_blogsection',

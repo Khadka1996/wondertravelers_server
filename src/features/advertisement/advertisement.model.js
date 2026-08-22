@@ -55,8 +55,6 @@ const advertisementSchema = new mongoose.Schema(
         'above_blogsection',
         'below_blogsection',
         'sidebar_blogsection',
-        'blog_sidebar_1',
-        'blog_sidebar_2',
         'blog_popup',
         'blog_content_paragraph_1',
         'blog_content_paragraph_2',
