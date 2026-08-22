@@ -1357,7 +1357,7 @@ export const auditController = {
         'https://api.wondertravelers.com',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3001',
-        'http://127.0.0.1:5000'
+        'https://api.wondertravelers.com'
       ].filter(Boolean);
       
       const origin = req.headers.origin;

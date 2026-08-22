@@ -193,7 +193,7 @@ const getConfiguredOrigins = () => normalizeOrigins([
   'http://localhost:3001',
   'http://127.0.0.1:3001',
   'https://api.wondertravelers.com',
-  'http://127.0.0.1:5000',
+  'https://api.wondertravelers.com',
   // Production Frontend Origins
   'https://www.wondertravelers.com',
   'https://wondertravelers.com',
