@@ -68,6 +68,20 @@ if (missing.length > 0) {
 
 const server = http.createServer(app);
 
+// ========================
+// HTTP timeouts
+// ========================
+// keepAliveTimeout must exceed the upstream proxy's keep-alive (nginx default 75s)
+// or Node closes pooled sockets mid-request and the proxy returns sporadic 502s -
+// this is the classic "works locally, flaky behind nginx" upload failure.
+// headersTimeout must be >= keepAliveTimeout. requestTimeout is kept generous so
+// large image uploads on slow connections are not cut off by Node itself (the
+// CDN/edge timeout, e.g. Cloudflare's ~100s, is the real outer bound - compress
+// client-side or upload direct-to-storage for files that can't finish in time).
+server.keepAliveTimeout = Number(process.env.SERVER_KEEPALIVE_TIMEOUT_MS) || 76000;
+server.headersTimeout = Number(process.env.SERVER_HEADERS_TIMEOUT_MS) || 80000;
+server.requestTimeout = Number(process.env.SERVER_REQUEST_TIMEOUT_MS) || 300000;
+
 // MongoDB connection with modern options + retry
 const connectDB = async (retries = 5, delay = 4000) => {
   try {
@@ -87,8 +101,13 @@ const connectDB = async (retries = 5, delay = 4000) => {
       // Optimizations for high throughput
       retryWrites: true,
       ...(isProd ? {
-        readPreference: 'secondaryPreferred', // Read from replicas if available
-        w: 0, // Don't wait for acknowledge (faster writes, riskier)
+        // primaryPreferred keeps read scaling on secondaries when the primary is
+        // down, but normal reads hit the primary so a just-written doc (e.g. a
+        // freshly uploaded photo) is immediately visible.
+        readPreference: 'primaryPreferred',
+        // w:1 so writes are acknowledged before the request resolves. w:0 was
+        // fire-and-forget: photo.save() could "succeed" while the doc was lost.
+        w: 1,
       } : {
         readPreference: 'primary'
       })

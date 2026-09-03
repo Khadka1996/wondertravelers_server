@@ -94,40 +94,32 @@ const setBreakingExpiry = () => {
 const invalidateBlogCache = async (type = 'both') => {
   try {
     console.log(`🔄 Invalidating ${type} cache...`);
-    
-    // Clear patterns based on type
-    const patterns = [];
-    
-    if (type === 'both' || type === 'blog') {
-      patterns.push(
-        'blogs:public:*',
-        'blogs:recent:*',
-        'blogs:trending:*',
-        'blogs:featured:*'
-      );
-    }
-    
-    if (type === 'both' || type === 'news') {
-      patterns.push(
-        'blogs:news:*',
-        'blogs:breaking:*',
-        'blogs:featured:*'
-      );
-    }
-    
-    // Always invalidate author-related caches
-    patterns.push(
-      'author:blogs:*',
-      'category:blogs:*',
-      'blogs:similar:*',
-      'blogs:tag:*'
-    );
-    
-    // Delete all matching patterns
+
+    // NOTE: getBlogs() serves BOTH blog and news under the `blogs:public:*`
+    // namespace (keyed by `...:type:blog:` / `...:type:news:`), while the
+    // dedicated getNews() handler uses `blogs:news:*`. A post can also move
+    // between blog and news. Rather than try to scope this precisely and get
+    // it wrong, always flush every list namespace - these are low-frequency
+    // admin writes against short-lived caches. `type` is kept for logging.
+    const patterns = [
+      'blogs:public:*',       // getBlogs() - both blog AND news variants
+      'blogs:news:*',         // getNews()
+      'blogs:recent:*',       // getRecentBlogs
+      'blogs:trending:*',     // getTrendingBlogs
+      'blogs:featured:*',     // getFeaturedBlogs
+      'blogs:breaking:*',     // getBreakingNews
+      'blogs:engagement:*',   // getEngagementTrending
+      'blogs:mostviewed:*',   // getMostViewed
+      'blogs:mostliked:*',    // getMostLiked
+      'blogs:category:*',     // getBlogsByCategory (was wrongly 'category:blogs:*')
+      'blogs:similar:*',      // getSimilarBlogs
+      'blog:*',               // getBlogBySlug -> blog:<slug>
+    ];
+
     for (const pattern of patterns) {
       await cache.delPattern(pattern);
     }
-    
+
     console.log(`✅ Cache invalidated for: ${type}`);
   } catch (error) {
     console.error('❌ Cache invalidation error:', error);
@@ -545,7 +537,9 @@ export const getBlogs = async (req, res) => {
 
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
-      setCacheHeaders(res, 600); // 10 min cache
+      // Short browser/CDN TTL so edits (publish, re-categorise) show up
+      // quickly. The 10-min server-side cache below still absorbs the load.
+      setCacheHeaders(res, 60);
       res.set('X-Cache', 'HIT');
       console.log(`✅ Cache HIT for ${cacheKey}`);
       return res.status(200).json({
@@ -597,7 +591,7 @@ export const getBlogs = async (req, res) => {
         console.log(`⏱️ Latest sort (DEFAULT, ${blogType}): ${JSON.stringify(sortOrder)}`);
     }
 
-    const queryHint = getListQueryHint(filter);
+    const queryHint = getListQueryHint(filter, sortValue);
 
     // Prepare count query and apply hint only if supported (some test fakes return plain numbers)
     const countQuery = Blog.countDocuments(filter);
@@ -651,8 +645,8 @@ export const getBlogs = async (req, res) => {
       }
     };
 
-    await cache.set(cacheKey, payload, 600); // 10 min cache
-    setCacheHeaders(res, 600);
+    await cache.set(cacheKey, payload, 600); // 10 min server-side cache
+    setCacheHeaders(res, 60);               // short browser/CDN TTL (see HIT branch)
     res.set('X-Cache', 'MISS');
 
     console.log(`✅ ${blogType.toUpperCase()} fetched successfully: returning page ${page} of ${totalPages}`);
@@ -685,7 +679,8 @@ export const getNews = async (req, res) => {
 
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
-      setCacheHeaders(res, 900); // 15 min cache for news (updated more frequently)
+      // Short browser/CDN TTL so edits show up quickly; 15-min server cache below.
+      setCacheHeaders(res, 60);
       res.set('X-Cache', 'HIT');
       console.log(`✅ News cache HIT: returned ${cachedResult.data.length} items`);
       return res.status(200).json({
@@ -785,8 +780,8 @@ export const getNews = async (req, res) => {
       }
     };
 
-    await cache.set(cacheKey, payload, 900); // 15 min cache
-    setCacheHeaders(res, 900);
+    await cache.set(cacheKey, payload, 900); // 15 min server-side cache
+    setCacheHeaders(res, 60);               // short browser/CDN TTL (see HIT branch)
     res.set('X-Cache', 'MISS');
 
     console.log(`✅ News fetched successfully: returning page ${sanitizedPage} of ${totalPages}`);
@@ -1198,6 +1193,18 @@ export const updateBlog = async (req, res) => {
       updates.scheduledFor = req.body.scheduledFor;
     }
 
+    // findByIdAndUpdate() bypasses the pre('save') hook that normally stamps
+    // publishedAt on first publish. Without a publishedAt the post sorts LAST
+    // in every public list (sorted by publishedAt desc), so a freshly
+    // published / re-categorised post appears at the bottom instead of the top.
+    const effectiveStatus = updates.status || blog.status;
+    if (effectiveStatus === 'published' && !blog.publishedAt && !updates.publishedAt) {
+      updates.publishedAt = new Date();
+    }
+
+    // Detect a blog <-> news move so both public lists get flushed below.
+    const typeChanged = typeof updates.type === 'string' && updates.type !== blog.type;
+
     // Handle featured image replacement
     if (req.file) {
       updates.featuredImage = `/uploads/blogs/${req.file.filename}`;
@@ -1232,8 +1239,11 @@ export const updateBlog = async (req, res) => {
       .populate('author', 'name profileImage')
       .populate('category', 'name slug');
 
-    // Invalidate cache when blog is updated
-    const contentType = updatedBlog.type === 'news' ? 'news' : 'blog';
+    // Invalidate cache when blog is updated. On a type change we must clear
+    // BOTH lists (the one it left and the one it joined), not just the new one.
+    const contentType = typeChanged
+      ? 'both'
+      : (updatedBlog.type === 'news' ? 'news' : 'blog');
     await invalidateBlogCache(contentType);
 
     res.status(200).json({
@@ -1305,17 +1315,24 @@ export const toggleBlogLike = async (req, res) => {
 // Get moderation blogs
 export const getModerationBlogs = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const { blogs, totalBlogs } = await Promise.all([
-      Blog.find({ status: 'pending' })
+    const { page, limit, skip } = sanitizePagination(req.query.page, req.query.limit);
+
+    // Moderation queue = posts still awaiting review. 'pending' is not a valid
+    // status in the schema enum (draft/published/archived/scheduled), so the
+    // old query always returned nothing.
+    const moderationFilter = { status: 'draft' };
+
+    // Promise.all resolves to an ARRAY - it must be destructured as one.
+    const [blogs, totalBlogs] = await Promise.all([
+      Blog.find(moderationFilter)
         .select('title slug excerpt featuredImage author category publishedAt views readingTime')
         .populate('author', 'name profileImage isVerified')
         .populate('category', 'name slug color')
         .sort({ publishedAt: -1, createdAt: -1 })
-        .skip((page - 1) * limit)
+        .skip(skip)
         .limit(limit)
         .lean(true),  // ⚡ Optimized for moderation page listing
-      Blog.countDocuments({ status: 'pending' })
+      Blog.countDocuments(moderationFilter)
     ]);
 
     const totalPages = Math.ceil(totalBlogs / limit);
@@ -1352,10 +1369,20 @@ export const bulkUpdateStatus = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status value' });
     }
 
+    // Every id must be a valid ObjectId, and the constructor now requires `new`.
+    const invalidId = ids.find((id) => !mongoose.Types.ObjectId.isValid(id));
+    if (invalidId) {
+      return res.status(400).json({ success: false, error: `Invalid blog ID: ${invalidId}` });
+    }
+    const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+
     const result = await Blog.updateMany(
-      { _id: { $in: ids.map((id) => mongoose.Types.ObjectId(id)) } },
+      { _id: { $in: objectIds } },
       { status }
     );
+
+    // Keep public lists in sync with the new statuses.
+    await invalidateBlogCache('both');
 
     res.status(200).json({ success: true, message: `Updated ${result.modifiedCount} blogs successfully` });
   } catch (error) {

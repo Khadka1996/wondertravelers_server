@@ -133,7 +133,17 @@ export const cacheMiddleware = async (req, res, next) => {
 // ========================
 // Security Configuration
 // ========================
-app.set('trust proxy', isProd ? 1 : 0);
+// Number of proxy hops in front of the app, so req.ip / rate-limit keys use the
+// real client IP. Set TRUST_PROXY=2 when behind BOTH Cloudflare and nginx;
+// otherwise every client can look like one IP and share the rate-limit bucket.
+const parseTrustProxy = (raw) => {
+  if (raw === undefined || raw === '') return isProd ? 1 : 0;
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  const n = Number(raw);
+  return Number.isNaN(n) ? raw : n;
+};
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 
 const helmetDirectives = {
   defaultSrc: ["'self'"],
@@ -253,8 +263,9 @@ app.use(cors({
       callback(null, true);
     } else {
       logger.warn('CORS blocked origin', { origin, allowedOrigins });
-      // Don't expose origin details to client - log server-side only
-      callback(new Error('Request origin not allowed'));
+      // Reject by omitting CORS headers (browser blocks it) rather than throwing,
+      // which would surface as a generic 500 from the error handler.
+      callback(null, false);
     }
   },
   credentials: true, // Critical: Allow credentials (cookies, HttpOnly cookies, etc.)

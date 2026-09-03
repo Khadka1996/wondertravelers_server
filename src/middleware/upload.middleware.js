@@ -196,16 +196,49 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
+// Max upload size (MB). Keep this <= the smallest limit in front of the app
+// (nginx client_max_body_size, Cloudflare plan limit, etc.) so rejections are consistent.
+export const MAX_UPLOAD_MB = parseInt(process.env.MAX_UPLOAD_MB, 10) || 50;
+
 const upload = multer({
   storage,
   limits: {
-    fileSize: 15 * 1024 * 1024, // 15MB local limit for larger images/uploads
+    fileSize: MAX_UPLOAD_MB * 1024 * 1024,
     files: 1, // Only one file
     fieldSize: 25 * 1024 * 1024, // Allow large rich-text/article content bodies
     parts: 50 // Allow a few form parts alongside the file payload
   },
   fileFilter,
 });
+
+/**
+ * Wrap a multer middleware so upload/size errors return a clean 4xx JSON
+ * response instead of falling through to the generic 500 error handler.
+ */
+export const handleMulterError = (middleware) => (req, res, next) => {
+  middleware(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      const messages = {
+        LIMIT_FILE_SIZE: `File is too large. Maximum size is ${MAX_UPLOAD_MB}MB.`,
+        LIMIT_FILE_COUNT: 'Too many files. Only one file is allowed.',
+        LIMIT_FIELD_VALUE: 'A form field exceeds the allowed size.',
+        LIMIT_PART_COUNT: 'The request has too many form parts.',
+        LIMIT_UNEXPECTED_FILE: `Unexpected file field "${err.field}".`,
+      };
+      return res.status(status).json({
+        success: false,
+        message: messages[err.code] || err.message || 'File upload failed.',
+        errorCode: err.code,
+      });
+    }
+    if (err) {
+      // fileFilter rejections (invalid type/extension) land here as plain Errors
+      return res.status(400).json({ success: false, message: err.message || 'Invalid file upload.' });
+    }
+    next();
+  });
+};
 
 export { upload }; // Export upload middleware for generic use
 export const uploadAvatar = upload.single('avatar'); // expects field name "avatar"

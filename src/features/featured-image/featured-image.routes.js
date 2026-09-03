@@ -15,7 +15,7 @@ import {
 } from './featured-image.controller.js';
 import { validateAdminPrivilege } from '../../middleware/admin-privilege.middleware.js';
 import { authMiddleware } from '../auth/auth.middleware.js';
-import { uploadFeaturedImage as uploadFeaturedImageMiddleware, processFeaturedImage } from '../../middleware/upload.middleware.js';
+import { uploadFeaturedImage as uploadFeaturedImageMiddleware, processFeaturedImage, handleMulterError } from '../../middleware/upload.middleware.js';
 import { logger } from '../../utils/logger.util.js';
 
 const router = express.Router();
@@ -71,7 +71,7 @@ router.post(
   '/upload',
   (req, res, next) => authMiddleware.protect(req, res, next),
   requireAdminRole,
-  uploadFeaturedImageMiddleware,
+  handleMulterError(uploadFeaturedImageMiddleware),
   processFeaturedImage,
   uploadFeaturedImage
 );
@@ -99,7 +99,7 @@ router.put(
   '/:id',
   (req, res, next) => authMiddleware.protect(req, res, next),
   requireAdminRole,
-  uploadFeaturedImageMiddleware,  // Optional - will skip if no file
+  handleMulterError(uploadFeaturedImageMiddleware),  // Optional - will skip if no file
   (req, res, next) => {
     // Only process image if file was uploaded
     if (req.file) {

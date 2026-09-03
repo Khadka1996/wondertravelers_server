@@ -133,22 +133,27 @@ const handleMulterError = (middleware) => {
   };
 };
 
-// Create a new blog (Admin or Super Admin)
-router.post('/', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('featuredImage')), createBlog);
+// Blog content management (create / edit / list / publish / schedule / images)
+// is open to admins AND moderators. `requireAdminRole` stays imported for any
+// future admin-only blog route.
+const requireBlogManager = authMiddleware.restrictTo('admin', 'moderator');
+
+// Create a new blog (Admin or Moderator)
+router.post('/', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, handleMulterError(upload.single('featuredImage')), createBlog);
 
 // ==================== ADMIN ONLY ROUTES (must come first) ====================
 
 // Get all blogs for admin (no filters - all statuses and types)
-router.get('/admin/all', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, getAllBlogsForAdmin);
+router.get('/admin/all', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, getAllBlogsForAdmin);
 
 // Get draft blogs (Admin)
-router.get('/admin/drafts', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, getDraftBlogs);
+router.get('/admin/drafts', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, getDraftBlogs);
 
 // Get scheduled blogs (Admin)
-router.get('/admin/scheduled', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, getScheduledBlogs);
+router.get('/admin/scheduled', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, getScheduledBlogs);
 
 // Get archived blogs (Admin)
-router.get('/admin/archived', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, getArchivedBlogs);
+router.get('/admin/archived', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, getArchivedBlogs);
 
 // ==================== PUBLIC ROUTES ====================
 
@@ -186,13 +191,13 @@ router.get('/engagement/most-liked', getMostLiked);
 // ==================== BLOG STATUS ACTIONS ====================
 
 // Publish a blog (Admin)  
-router.put('/:id/publish', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, publishBlog);
+router.put('/:id/publish', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, publishBlog);
 
 // Archive a blog (Admin)
-router.put('/:id/archive', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, archiveBlog);
+router.put('/:id/archive', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, archiveBlog);
 
 // Schedule a blog (Admin)
-router.post('/:id/schedule', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, scheduleBlog);
+router.post('/:id/schedule', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, scheduleBlog);
 
 // ==================== GENERAL BLOG ENDPOINTS ====================
 
@@ -243,7 +248,7 @@ router.get('/:id/engagement', getBlogEngagement);
 router.get('/:id/similar', getSimilarBlogs);
 
 // Upload blog image
-router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('image')), uploadBlogImage);
+router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, handleMulterError(upload.single('image')), uploadBlogImage);
 
 // ==================== GENERIC BLOG ENDPOINTS ====================
 
@@ -251,7 +256,7 @@ router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, n
 router.get('/:id', getBlogById);
 
 // Update a blog (Admin or Super Admin) - with file upload support
-router.put('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireAdminRole, handleMulterError(upload.single('featuredImage')), updateBlog);
+router.put('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, handleMulterError(upload.single('featuredImage')), updateBlog);
 
 // Delete a blog (Admin or Moderator)
 router.delete('/:id', (req, res, next) => authMiddleware.protect(req, res, next), authMiddleware.restrictTo('admin', 'moderator'), deleteBlog);
