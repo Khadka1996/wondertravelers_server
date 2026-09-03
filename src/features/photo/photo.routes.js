@@ -1,7 +1,7 @@
 import express from 'express';
 import * as photoController from './photo.controller.js';
 import { authMiddleware } from '../../features/auth/auth.middleware.js';
-import { uploadPhoto } from '../../middleware/upload.middleware.js';
+import { uploadPhoto, handleMulterError } from '../../middleware/upload.middleware.js';
 
 const router = express.Router();
 
@@ -38,14 +38,14 @@ router.get('/admin/all',
 router.post('/', 
   (req, res, next) => authMiddleware.protect(req, res, next),
   (req, res, next) => authMiddleware.restrictTo('admin', 'super-admin')(req, res, next),
-  uploadPhoto,
+  handleMulterError(uploadPhoto),
   photoController.uploadPhoto
 );
 
 router.put('/:id', 
   (req, res, next) => authMiddleware.protect(req, res, next),
   (req, res, next) => authMiddleware.restrictTo('admin', 'super-admin')(req, res, next),
-  uploadPhoto,
+  handleMulterError(uploadPhoto),
   photoController.updatePhoto
 );
 

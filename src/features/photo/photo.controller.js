@@ -52,7 +52,11 @@ const getDefaultWatermark = async () => {
 /**
  * Extract EXIF metadata from image buffer
  */
-const extractExifData = (buffer) => {
+const extractExifData = (buffer, mimetype = '') => {
+  // exif-parser only reads JPEG/TIFF containers; PNG/WebP/GIF just throw noise.
+  if (mimetype && !/jpe?g|tiff?/i.test(mimetype)) {
+    return {};
+  }
   try {
     const parser = ExifParser.create(buffer);
     const result = parser.parse();
@@ -260,7 +264,8 @@ export const getPhotoBySlug = async (req, res) => {
  */
 export const uploadPhoto = async (req, res) => {
   let tempFilePath = null; // Track temp file for cleanup
-  
+  const uploadedFiles = []; // Track written output files so we can roll them back on error
+
   try {
     if (!req.file) {
       logger.error('No file provided in upload request', {
@@ -336,7 +341,7 @@ export const uploadPhoto = async (req, res) => {
       });
     }
 
-    const exifData = extractExifData(fileBuffer);
+    const exifData = extractExifData(fileBuffer, req.file.mimetype);
     
     // Use EXIF data or fallback to request body
     const metadata = {
@@ -480,6 +485,7 @@ export const uploadPhoto = async (req, res) => {
       uploadPhotoFile(processed.thumbnail.buffer, `thumbnail-${slug}-${timestamp}.jpg`, 'photos'),
       uploadPhotoFile(processed.watermarked.buffer, `watermarked-${slug}-${timestamp}.jpg`, 'photos')
     ]);
+    uploadedFiles.push(thumbnailUrl, watermarkedUrl);
 
     // Create photo document with watermark info
     // Clean up watermarkConfig - remove imageBuffer before saving to DB
@@ -542,7 +548,7 @@ export const uploadPhoto = async (req, res) => {
     }
 
     // Invalidate cache
-    await cache.del(`photos:published:*`);
+    await cache.delPattern(`photos:published:*`);
     await cache.del('photos:featured');
 
     logger.info('Photo uploaded successfully with watermark', {
@@ -578,7 +584,13 @@ export const uploadPhoto = async (req, res) => {
       }
     }
 
-    logger.error('Upload photo error:', { 
+    // Roll back any output files already written to disk (DB save failed etc.)
+    if (uploadedFiles.length) {
+      await deletePhotoFiles(uploadedFiles);
+      logger.debug('Rolled back orphaned upload files after error', { files: uploadedFiles });
+    }
+
+    logger.error('Upload photo error:', {
       error: error.message,
       stack: error.stack,
       errorCode: error.code
@@ -615,7 +627,8 @@ export const uploadPhoto = async (req, res) => {
  */
 export const updatePhoto = async (req, res) => {
   let tempFilePath = null; // Track temp file for cleanup
-  
+  const uploadedFiles = []; // Track written output files so we can roll them back on error
+
   try {
     const { id } = req.params;
     const updateData = {};
@@ -744,6 +757,7 @@ export const updatePhoto = async (req, res) => {
         `watermarked-${slug}-${timestamp}.jpg`,
         'photos'
       );
+      uploadedFiles.push(thumbnailPath, watermarkedPath);
 
       logger.debug('Photo files uploaded during update', {
         thumbnailPath,
@@ -824,12 +838,13 @@ export const updatePhoto = async (req, res) => {
       .lean(); // Use lean for better performance
 
     if (!photo) {
+      if (uploadedFiles.length) await deletePhotoFiles(uploadedFiles);
       return res.status(404).json({ success: false, message: 'Photo not found' });
     }
 
     // Invalidate cache
     await cache.del(`photo:${photo.slug}`);
-    await cache.del(`photos:published:*`);
+    await cache.delPattern(`photos:published:*`);
     await cache.del(`photos:featured`);
 
     logger.info('Photo updated successfully', {
@@ -844,6 +859,11 @@ export const updatePhoto = async (req, res) => {
       photo
     });
   } catch (error) {
+    // Roll back any newly written output files - the DB update never landed
+    if (uploadedFiles.length) {
+      await deletePhotoFiles(uploadedFiles);
+      logger.debug('Rolled back orphaned upload files after update error', { files: uploadedFiles });
+    }
     logger.error('Update photo error:', { error: error.message });
     res.status(500).json({ success: false, message: error.message });
   } finally {
@@ -886,7 +906,7 @@ export const deletePhoto = async (req, res) => {
 
     // Invalidate cache
     await cache.del(`photo:${photo.slug}`);
-    await cache.del(`photos:published:*`);
+    await cache.delPattern(`photos:published:*`);
     await cache.del('photos:featured');
 
     logger.info('Photo deleted', { photoId: photo._id });
