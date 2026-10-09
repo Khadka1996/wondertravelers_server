@@ -8,6 +8,7 @@ import { validationResult } from 'express-validator';
 import cache from '../../utils/cache.util.js';
 import { generateExcerpt } from '../../utils/excerpt-generator.util.js';
 import { generateSEOMetadata } from '../../utils/seo-generator.util.js';
+import { replaceInlineImages } from '../../utils/inline-images.util.js';
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -897,16 +898,19 @@ export const getBlogById = async (req, res) => {
       .populate('category', 'name slug')
       .lean();
 
-    if (!blog) {
+    const isStaff = ['admin', 'moderator'].includes(req.user?.role);
+    // Drafts, scheduled and archived posts are visible to staff only.
+    if (!blog || (blog.status !== 'published' && !isStaff)) {
       return res.status(404).json({ success: false, error: 'Blog not found' });
     }
 
-    // ⚡ OPTIMIZED: Atomic view increment (fire-and-forget, non-blocking)
-    Blog.findByIdAndUpdate(id, { $inc: { views: 1 } }).exec().catch(err => 
+    // Staff opening a post in the editor is not a reader view.
+    if (!isStaff) Blog.findByIdAndUpdate(id, { $inc: { views: 1 } }).exec().catch(err => 
       console.error('View increment failed:', err.message)
     );
 
-    setCacheHeaders(res, 60);
+    // Never let a shared cache keep a draft that staff fetched.
+    if (blog.status === 'published') setCacheHeaders(res, 60);
 
     res.status(200).json({
       success: true,
@@ -1004,11 +1008,17 @@ export const createBlog = async (req, res) => {
       featuredImage = `/uploads/blogs/${req.file.filename}`;
     }
     
+    // Engagement counters and ids are never taken from the request body.
+    const {
+      _id, views, likes, likesCount, shares, commentsCount, readingTime, isPublished,
+      createdAt, updatedAt, ...editableFields
+    } = req.body;
+
     const blog = new Blog({
-      ...req.body,
+      ...editableFields,
       title: title.trim(),
       subHeading: subHeading.trim(),
-      content: content.trim(),
+      content: await replaceInlineImages(content.trim(), 'blogs'),
       tags: tags,
       isFeatured,
       isBreaking,
@@ -1124,7 +1134,7 @@ export const updateBlog = async (req, res) => {
       updates.subHeading = subHeading.trim();
     }
     if (content) {
-      updates.content = content.trim();
+      updates.content = await replaceInlineImages(content.trim(), 'blogs');
     }
     if (category) {
       updates.category = category;

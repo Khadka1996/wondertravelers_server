@@ -4,6 +4,8 @@ import {User } from './auth.model.js';
 import { logger } from '../../utils/logger.util.js';
 import mongoose from 'mongoose';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 /**
  * Helper function to validate date ranges
  */

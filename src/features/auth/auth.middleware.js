@@ -169,9 +169,10 @@ export const authMiddleware = {
       try {
         decoded = jwt.verify(token, JWT_SECRET);
       } catch (err) {
-        // Clear invalid cookie - try all possible paths
+        // Drop only the bad access token; the refresh token must survive so the
+        // client can get a new access token instead of being logged out.
         if (getAccessTokenFromCookies(req.cookies)) {
-          clearAuthCookies(req, res);
+          res.clearCookie('access_token', getCookieClearOptions(req));
         }
         
         const message = err.name === 'TokenExpiredError'

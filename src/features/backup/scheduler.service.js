@@ -3,7 +3,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import cron from 'node-cron';
 import { BACKUP_DIR, ensureBackupDir } from './backup.utils.js';
-import { createFilesBackupJob, enforceRetention } from './backup.service.js';
+import { createFilesBackupJob, createMongoDumpJob, enforceRetention } from './backup.service.js';
 import { logger } from '../../utils/logger.util.js';
 
 const CONFIG_FILE = path.join(BACKUP_DIR, 'auto-sync.json');

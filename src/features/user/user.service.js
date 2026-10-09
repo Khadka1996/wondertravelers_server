@@ -473,11 +473,13 @@ export const userService = {
         sortOrder = -1
       } = filters;
 
+      // Escape the text: a raw user string as a regex allows ReDoS.
+      const pattern = String(query).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const searchFilter = {
         $or: [
-          { username: { $regex: query, $options: 'i' } },
-          { email: { $regex: query, $options: 'i' } },
-          { fullName: { $regex: query, $options: 'i' } }
+          { username: { $regex: pattern, $options: 'i' } },
+          { email: { $regex: pattern, $options: 'i' } },
+          { fullName: { $regex: pattern, $options: 'i' } }
         ]
       };
 

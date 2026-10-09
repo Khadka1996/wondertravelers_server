@@ -8,11 +8,13 @@ class PerfScheduler {
   constructor(redisClient = null) {
     this.redisClient = redisClient;
     this.intervals = [];
+    // Check the services directly on this machine: going out through the
+    // public URL measured the internet round trip and hit our own rate limit.
     this.targetEndpoints = [
-      { url: 'https://api.wondertravelers.com/api/perf/health', service: 'backend-api' },
-      { url: 'http://localhost:3000/api/health', service: 'frontend-api' },
+      { url: `http://127.0.0.1:${process.env.PORT || 5000}/api/perf/health`, service: 'backend-api' },
+      { url: process.env.FRONTEND_HEALTH_URL || 'http://127.0.0.1:3000/', service: 'frontend' },
     ];
-    this.checkInterval = 30000; // 30 seconds
+    this.checkInterval = 60000; // 60 seconds
   }
 
   /**

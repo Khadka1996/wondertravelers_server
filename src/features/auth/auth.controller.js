@@ -4,6 +4,7 @@ import { User } from './auth.model.js';
 import { SecurityAudit, SEVERITY_LEVELS, ACTION_CATEGORIES } from './audit.model.js'; // NEW: Import audit model
 import { logger } from '../../utils/logger.util.js';
 import { sendLoginNotification, sendSecurityAlert } from '../../utils/notification.util.js';
+import { sendPasswordResetEmail } from '../../utils/email.util.js';
 
 // Cookie configuration helpers
 // Auth cookies should work for both same-origin and cross-site deployments.
@@ -111,15 +112,16 @@ export const authController = {
       const user = await authService.register(req.body);
 
       // Generate tokens
+      const refreshVersion = user.nextRefreshTokenVersion();
       const { accessToken, refreshToken } = authService.generateTokens(
         user._id,
         user.role,
         user.sessionVersion,
-        user.refreshTokenVersion || 0
+        refreshVersion
       );
 
       // Store refresh token
-      await user.setRefreshToken(refreshToken);
+      await user.setRefreshToken(refreshToken, refreshVersion);
 
       // Update last login on registration
       user.lastLogin = new Date();
@@ -332,6 +334,10 @@ export const authController = {
         expiresIn: ACCESS_COOKIE_MAX_AGE_MS,
       });
     } catch (err) {
+      if (err.code === 'REFRESH_RACE') {
+        return res.status(409).json({ success: false, message: err.message, code: err.code });
+      }
+
       logger.error('Error in refresh token', { 
         error: err.message, 
         stack: err.stack 
@@ -677,7 +683,13 @@ export const authController = {
     try {
       logger.info('Update profile endpoint called', { userId: req.user._id });
 
-      const updates = req.body;
+      // Only fields that passed updateProfileSchema. The raw body must never
+      // reach the update, or a user could send { role: 'admin' }.
+      const { phoneNumber, ...updates } = req.validated || {};
+      if (phoneNumber !== undefined) {
+        updates.phone = phoneNumber || null;
+        updates.phoneVerified = false;
+      }
       const user = await User.findByIdAndUpdate(
         req.user._id,
         updates,
@@ -1378,18 +1390,11 @@ export const authController = {
         });
       }
 
-      // In development, show the token for testing
-      if (process.env.NODE_ENV === 'development') {
-        return res.json({
-          success: true,
-          message: 'Password reset link sent (in dev mode showing token)',
-          resetToken: result.resetToken
-        });
+      const emailResult = await sendPasswordResetEmail(email, result.resetToken);
+      if (!emailResult.success) {
+        logger.error('Password reset email not sent', { userId: result.userId, error: emailResult.error });
       }
 
-      // TODO: In production, send email with the resetToken
-      // await sendPasswordResetEmail(email, result.resetToken);
-      
       // Log password reset request
       await logSecurityAudit({
         userId: result.userId,
@@ -1412,9 +1417,10 @@ export const authController = {
         userId: result.userId 
       });
 
+      // Same answer as for unknown emails, so accounts can't be discovered.
       res.json({
         success: true,
-        message: 'Password reset link sent to your email'
+        message: 'If an account exists with this email, a password reset link has been sent'
       });
     } catch (err) {
       logger.error('Error in requestPasswordReset', { 

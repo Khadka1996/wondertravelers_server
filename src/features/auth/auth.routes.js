@@ -139,7 +139,8 @@ router.post('/register', validate(registerSchema), authController.register);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/login', loginRateLimiter, validate(loginSchema), authController.login);
-router.post('/refresh', refreshLimiter, validate(refreshTokenSchema), authController.refresh);
+// The refresh token is read from the httpOnly cookie, so there is no body to validate.
+router.post('/refresh', refreshLimiter, authController.refresh);
 router.post('/request-password-reset', resetLimiter, validate(requestPasswordResetSchema), authController.requestPasswordReset);
 router.post('/reset-password', resetLimiter, validate(resetPasswordSchema), authController.resetPassword);
 

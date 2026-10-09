@@ -4,7 +4,11 @@ import crypto from 'crypto';
 import { User } from './auth.model.js';
 import { logger } from '../../utils/logger.util.js';
 import redisClient from '../../utils/redis.util.js';
+
 import { checkBruteForce } from './auth.enhanced.js';
+
+// A rotated refresh token presented this soon after rotation is a tab race, not theft.
+const REFRESH_RACE_GRACE_MS = 30 * 1000;
 
 // ========================
 // Environment Validation
@@ -228,10 +232,11 @@ export const authService = {
     
     // Generate tokens
     const accessToken = this.generateAccessToken(user._id, user.role, user.sessionVersion);
-    const refreshToken = this.generateRefreshToken(user._id, user.refreshTokenVersion || 0);
+    const refreshVersion = user.nextRefreshTokenVersion();
+    const refreshToken = this.generateRefreshToken(user._id, refreshVersion);
 
     // Store refresh token with expiry
-    await user.setRefreshToken(refreshToken);
+    await user.setRefreshToken(refreshToken, refreshVersion);
     
     // Update last login
     user.lastLogin = new Date();
@@ -393,7 +398,7 @@ export const authService = {
 
       // Find user with refresh token
       const user = await User.findById(decoded.id)
-        .select('+refreshToken +refreshTokenVersion +sessionVersion +active +role');
+        .select('+refreshToken +refreshTokenVersion +refreshTokenRotatedAt +sessionVersion +active +role');
       
       if (!user || !user.active) {
         logger.warn('User not found or inactive during refresh', { userId: decoded.id });
@@ -402,6 +407,20 @@ export const authService = {
 
       // Verify the old refresh token matches stored hash
       const isValid = await user.verifyRefreshToken(oldRefreshToken);
+      const currentVersion = user.refreshTokenVersion || 0;
+
+      // Two tabs (or a page and the background timer) refreshing at once: the
+      // loser presents the token that was rotated a moment ago. That is not
+      // theft, so don't revoke every session - just tell it to retry.
+      const rotatedRecently = user.refreshTokenRotatedAt
+        && Date.now() - user.refreshTokenRotatedAt.getTime() < REFRESH_RACE_GRACE_MS;
+      if (!isValid && decoded.version === currentVersion - 1 && rotatedRecently) {
+        const raceError = new Error('Session was just refreshed - retry');
+        raceError.statusCode = 409;
+        raceError.code = 'REFRESH_RACE';
+        throw raceError;
+      }
+
       if (!isValid) {
         // Possible token reuse - invalidate all sessions
         await user.invalidateAllSessions();
@@ -413,7 +432,6 @@ export const authService = {
       }
 
       // Verify token version matches
-      const currentVersion = user.refreshTokenVersion || 0;
       if (decoded.version !== currentVersion) {
         logger.warn('Token version mismatch', {
           userId: user._id,
@@ -425,10 +443,11 @@ export const authService = {
 
       // Generate new tokens
       const accessToken = this.generateAccessToken(user._id, user.role, user.sessionVersion);
-      const newRefreshToken = this.generateRefreshToken(user._id, currentVersion);
+      const newVersion = user.nextRefreshTokenVersion();
+      const newRefreshToken = this.generateRefreshToken(user._id, newVersion);
 
       // Store new refresh token (invalidates old one via token rotation)
-      await user.setRefreshToken(newRefreshToken);
+      await user.setRefreshToken(newRefreshToken, newVersion);
 
       logger.info('Refresh token rotated successfully', { 
         userId: user._id,
@@ -446,6 +465,8 @@ export const authService = {
         stack: err.stack 
       });
       
+      if (err.code === 'REFRESH_RACE') throw err;
+
       // Specific error messages
       if (err.message.includes('security issue')) {
         throw new Error('Security violation detected. Please login again.');

@@ -1,6 +1,7 @@
 import Destination from './destination.model.js';
 import cache from '../../utils/cache.util.js';
 import { logger } from '../../utils/logger.util.js';
+import { replaceInlineImages, resolveImageObjects } from '../../utils/inline-images.util.js';
 
 const CACHE_TTL = 3600; // 1 hour for destinations
 const FEATURED_CACHE_TTL = 7200; // 2 hours for featured
@@ -352,9 +353,9 @@ export const createDestination = async (req, res) => {
       slug,
       category,
       shortDesc,
-      longDesc,
-      image,
-      gallery,
+      longDesc: await replaceInlineImages(longDesc, 'destinations'),
+      image: await resolveImageObjects(image, 'destinations'),
+      gallery: await resolveImageObjects(gallery, 'destinations'),
       location,
       bestTime,
       bestToVisit,
@@ -409,6 +410,10 @@ export const updateDestination = async (req, res) => {
         updateData[field] = req.body[field];
       }
     });
+
+    if (updateData.image) updateData.image = await resolveImageObjects(updateData.image, 'destinations');
+    if (updateData.gallery) updateData.gallery = await resolveImageObjects(updateData.gallery, 'destinations');
+    if (updateData.longDesc) updateData.longDesc = await replaceInlineImages(updateData.longDesc, 'destinations');
 
     updateData.updatedBy = req.user._id;
 

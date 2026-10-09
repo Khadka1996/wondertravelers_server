@@ -19,7 +19,7 @@ export async function sendSecurityAlert(userId, event = {}, level = 'high') {
 		level,
 		userId: userId || null,
 		timestamp: new Date().toISOString(),
-		event,
+		details: event,
 	};
 
 	console.log('[Notification] Security Alert:', JSON.stringify(payload));

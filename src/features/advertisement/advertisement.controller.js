@@ -1,5 +1,6 @@
 import Advertisement from './advertisement.model.js';
 import cache from '../../utils/cache.util.js';
+import { resolveImageObjects } from '../../utils/inline-images.util.js';
 
 const CACHE_TTL = 3600; // 1 hour
 
@@ -160,7 +161,7 @@ export const createAd = async (req, res) => {
 
     const ad = new Advertisement({
       title,
-      image,
+      image: await resolveImageObjects(image, 'advertisements'),
       weblink,
       position,
       isActive: isActive !== false,
@@ -187,7 +188,13 @@ export const createAd = async (req, res) => {
 export const updateAd = async (req, res) => {
   try {
     const { title, image, weblink, position, isActive } = req.body;
-    const allowedFields = { title, image, weblink, position, isActive };
+    const allowedFields = {
+      title,
+      image: image ? await resolveImageObjects(image, 'advertisements') : undefined,
+      weblink,
+      position,
+      isActive,
+    };
 
     // Remove undefined fields
     Object.keys(allowedFields).forEach(

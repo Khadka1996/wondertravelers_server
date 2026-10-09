@@ -82,11 +82,17 @@ const UserSchema = new Schema(
     refreshTokenExpires: {
       type: Date,
       select: false,
-      index: { expires: '7d' }, // Auto-cleanup after 7 days
+      // Plain index. A TTL index here would delete the whole USER document
+      // 7 days after the refresh token expired, not just this field.
+      index: true,
     },
     refreshTokenVersion: {
       type: Number,
       default: 0,
+      select: false,
+    },
+    refreshTokenRotatedAt: {
+      type: Date,
       select: false,
     },
     sessionVersion: {
@@ -125,7 +131,8 @@ const UserSchema = new Schema(
 
     // Password Reset
     passwordResetToken: { type: String, select: false },
-    passwordResetExpires: { type: Date, select: false, index: { expires: '10m' } },
+    // Plain index: a TTL index would delete the whole user 10 min after expiry.
+    passwordResetExpires: { type: Date, select: false, index: true },
 
     // Security Tracking
     loginAttempts: [
@@ -430,19 +437,20 @@ UserSchema.methods.invalidateAllSessions = async function (invalidateDevices = f
 };
 
 // Set refresh token with expiry
-UserSchema.methods.setRefreshToken = async function (refreshToken, expiresInDays = 7) {
+// `version` must be the version embedded in the token, so the next refresh's
+// version check matches. Use nextRefreshTokenVersion() to pick it.
+UserSchema.methods.setRefreshToken = async function (refreshToken, version, expiresInDays = 7) {
   const salt = await bcrypt.genSalt(10);
-  const hashedToken = await bcrypt.hash(refreshToken, salt);
-  
-  // Calculate expiry
-  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
-  
-  // Store
-  this.refreshToken = hashedToken;
-  this.refreshTokenExpires = expiresAt;
-  this.refreshTokenVersion = (this.refreshTokenVersion || 0) + 1;
-  
+  this.refreshToken = await bcrypt.hash(refreshToken, salt);
+  this.refreshTokenExpires = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+  this.refreshTokenVersion = version;
+  this.refreshTokenRotatedAt = new Date();
+
   await this.save();
+};
+
+UserSchema.methods.nextRefreshTokenVersion = function () {
+  return (this.refreshTokenVersion || 0) + 1;
 };
 
 // Verify refresh token with expiry check

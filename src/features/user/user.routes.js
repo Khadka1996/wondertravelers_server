@@ -65,12 +65,13 @@ const updateUserInfoSchema = z.object({
  *         name: status
  *         schema: { type: string, enum: ['active', 'inactive'] }
  */
-router.get('/search', userController.searchUsers);
-
 // ========================
 // PROTECTED ENDPOINTS (Auth Required)
 // ========================
 router.use(authMiddleware.protect);
+
+// Returns emails and roles, so staff only.
+router.get('/search', authMiddleware.restrictTo('admin', 'moderator'), userController.searchUsers);
 
 /**
  * @swagger

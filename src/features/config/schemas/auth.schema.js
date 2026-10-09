@@ -89,6 +89,17 @@ export const updateProfileSchema = z.object({
     .trim()
     .optional(),
 
+  firstName: z.string().trim().max(50, { message: 'First name too long' }).optional().nullable(),
+  lastName: z.string().trim().max(50, { message: 'Last name too long' }).optional().nullable(),
+  email: z.string().trim().toLowerCase().email({ message: 'Invalid email format' }).optional(),
+  address: z.string().trim().max(500, { message: 'Address too long' }).optional().nullable(),
+  phoneNumber: z
+    .string()
+    .trim()
+    .regex(/^(\+?[1-9]\d{1,14})?$/, { message: 'Please provide a valid phone number' })
+    .optional()
+    .nullable(),
+
   avatar: z
     .string()
     .url({ message: 'Invalid URL for avatar' })

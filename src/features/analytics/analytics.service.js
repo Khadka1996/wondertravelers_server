@@ -8,14 +8,9 @@ import redisClient from '../../utils/redis.util.js';
  * @param {Object} req - Express request object
  * @returns {string} Client IP address
  */
-const getClientIp = (req) => {
-  return (
-    req.headers['x-forwarded-for']?.split(',')[0].trim() ||
-    req.headers['x-real-ip'] ||
-    req.connection.remoteAddress ||
-    '127.0.0.1'
-  );
-};
+// req.ip honours `trust proxy`, so it is the real visitor address and cannot be
+// spoofed by sending a fake X-Forwarded-For header.
+const getClientIp = (req) => (req.ip || '127.0.0.1').replace(/^::ffff:/, '');
 
 /**
  * Anonymize IP address for privacy (GDPR/CCPA compliance)
@@ -84,10 +79,6 @@ export const trackAnalyticsEvent = async (req, eventType, additionalData = {}) =
     // Lookup geolocation
     const geoData = geoip.lookup(ipAddress);
     
-    if (!geoData) {
-      console.warn(`⚠️ Geolocation lookup failed for IP: ${ipAddress}. This is normal for private IPs (127.0.0.1, 192.168.x.x, etc.)`);
-    }
-
     // geoip-lite returns: { country: 'US', city: 'New York', ll: [lat, lng], ... }
     // So geoData.country IS the country code (2-letter ISO)
     const countryCode = geoData?.country || 'XX';
@@ -121,6 +112,7 @@ export const trackAnalyticsEvent = async (req, eventType, additionalData = {}) =
       userId: req.user?._id || null,
       path: req.path,
       referrer: req.get('referer') || null,
+      // additionalData (below) overrides path/referrer for browser-reported page views
       country: countryName,
       countryCode: countryCode,
       region: getRegionFromAnalytics(countryCode, geoData?.timezone),
@@ -132,13 +124,6 @@ export const trackAnalyticsEvent = async (req, eventType, additionalData = {}) =
     };
 
     await Analytics.create(analyticsData);
-    
-    // Log successful tracking with geolocation info
-    if (geoData) {
-      console.log(`✅ Analytics tracked: ${countryName} (${countryCode}) - ${geoData.city || 'Unknown city'}`);
-    } else {
-      console.log(`✅ Analytics tracked: Private/Local IP (${ipAddress})`);
-    }
     
     return analyticsData;
   } catch (error) {

@@ -249,17 +249,11 @@ const isSameOriginRequest = (origin) => {
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) {
-      if (isProd) {
-        logger.warn('CORS: Missing origin header in production');
-        return callback(null, false); // Block requests without origin in production
-      }
-      logger.info('CORS: Missing origin header in development');
-      return callback(null, true); // Allow requests without origin in development
-    }
+    // No Origin = same-origin navigation or server-to-server (SSR, curl).
+    // CORS headers are irrelevant there, so just don't add them.
+    if (!origin) return callback(null, false);
 
     if (allowedOrigins.includes(origin) || isSameOriginRequest(origin)) {
-      logger.info('CORS allowed origin', { origin });
       callback(null, true);
     } else {
       logger.warn('CORS blocked origin', { origin, allowedOrigins });
@@ -289,9 +283,17 @@ app.use(cors({
 // ========================
 // Rate Limiting with Logging
 // ========================
+// The website's own server (SSR fetches) and local health checks must not share
+// one per-IP bucket with visitors, or pages lose their data under normal traffic.
+const rateLimitSkipIps = new Set([
+  '127.0.0.1', '::1', '::ffff:127.0.0.1',
+  ...normalizeOrigins([process.env.RATE_LIMIT_SKIP_IPS]),
+]);
+
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isProd ? 250 : 1000,
+  skip: (req) => rateLimitSkipIps.has(req.ip),
   message: { success: false, message: 'Too many requests' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -315,7 +317,7 @@ app.use(rateLimit({
 
 // 📦 Response Compression with Brotli (better than gzip for high concurrency)
 app.use(compression({
-  level: isProd ? 11 : 6,  // Mode 11 = max compression in prod
+  level: 6,  // zlib accepts 0-9; 11 threw on every gzip response
   threshold: 512,          // Only compress responses > 512 bytes
   filter: (req, res) => {
     // Don't compress these content types
@@ -385,15 +387,6 @@ if (!isTest) {
 }
 
 // ========================
-// Analytics Tracking Middleware
-// ========================
-// Track all page views for analytics (must be before static files and routes)
-// Skip analytics during `test` to avoid DB writes and timeouts
-if (!isTest) {
-  app.use(analyticsTrackingMiddleware);
-}
-
-// ========================
 // Static Files
 // ========================
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -404,7 +397,6 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // Import Routes
 // ========================
 import authRoutes from './features/auth/auth.routes.js';
-import oauthRoutes from './features/auth/oauth.routes.js';
 import auditRoutes from './features/auth/audit.routes.js';
 import adminRoutes from './features/admin/admin.routes.js';
 import { adminController } from './features/admin/admin.controller.js';
@@ -415,8 +407,7 @@ import verificationRoutes from './features/verification/verification.routes.js';
 import backupRoutes from './features/backup/backup.routes.js';
 import analyticsRoutes from './features/analytics/analytics.routes.js';
 import perfRoutes from './features/perf/perf.routes.js';
-import { auditSensitiveRequests, addGeolocation } from './middleware/audit.middleware.js';
-import { analyticsTrackingMiddleware } from './middleware/analytics-tracking.middleware.js';
+import { auditSensitiveRequests } from './middleware/audit.middleware.js';
 import authorRoutes from './features/author/author.routes.js';
 import categoryRoutes from './features/category/category.routes.js';
 import blogRoutes from './features/blog/blog.routes.js';
@@ -507,9 +498,8 @@ app.get('/api/admin/dashboard/stats', authMiddleware.protect, authMiddleware.res
 // API Routes with Middleware
 // ========================
 app.use('/api/auth', authRoutes);
-app.use('/api/auth/oauth', addGeolocation, oauthRoutes);
 app.use('/api/audit', auditRoutes);
-app.use('/api/admin', auditSensitiveRequests, adminRoutes);
+app.use('/api/admin', auditSensitiveRequests(), adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/moderator', moderatorRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -555,22 +545,43 @@ app.use((req, res) => {
 // ========================
 // Error Handler
 // ========================
+// Services throw plain Errors for expected failures (bad password, expired
+// token, ...). Map those to a proper 4xx so clients can react, instead of 500.
+const EXPECTED_ERRORS = [
+  [/too many (failed )?(attempts|requests)/i, 429],
+  [/invalid credentials|account inactive|invalid (refresh )?token|token (expired|invalidated|version mismatch)|refresh token (expired|required)|session invalidated|authentication failed|please login again|security violation|user not found or inactive|invalid token type/i, 401],
+  [/invalid or expired reset token|cannot reuse/i, 400],
+];
+
+const resolveErrorStatus = (err) => {
+  const explicit = Number(err.statusCode || err.status);
+  if (Number.isInteger(explicit) && explicit >= 400 && explicit < 600) return explicit;
+  if (err.type === 'entity.parse.failed') return 400;
+  if (err.type === 'entity.too.large' || err.code === 'LIMIT_FILE_SIZE') return 413;
+  if (err.name === 'MulterError' || err.name === 'ValidationError' || err.name === 'CastError') return 400;
+  if (err.code === 11000) return 409;
+  const match = EXPECTED_ERRORS.find(([pattern]) => pattern.test(err.message || ''));
+  return match ? match[1] : 500;
+};
+
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error:', {
-    message: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip
-  });
-  
-  // In production, hide internal error details; in dev, show them for debugging
-  const message = isProd ? 'Internal server error' : (err.message || 'Internal server error');
-  
-  res.status(err.status || 500).json({
+  const status = resolveErrorStatus(err);
+  const logMeta = { message: err.message, url: req.url, method: req.method, ip: req.ip, status };
+  if (status >= 500) {
+    logger.error('Unhandled error:', { ...logMeta, stack: err.stack });
+  } else {
+    logger.warn('Request failed:', logMeta);
+  }
+
+  // Client errors carry a useful message; server errors stay generic in production.
+  const message = status < 500 || !isProd
+    ? (err.code === 11000 ? 'Already exists' : err.message || 'Request failed')
+    : 'Internal server error';
+
+  res.status(status).json({
     success: false,
     message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+    ...(!isProd && status >= 500 && { stack: err.stack })
   });
 });
 

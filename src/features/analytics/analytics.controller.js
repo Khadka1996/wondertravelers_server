@@ -2,6 +2,22 @@ import * as analyticsService from './analytics.service.js';
 import { logger } from '../../utils/logger.util.js';
 
 /**
+ * POST /analytics/page-view  { path, referrer }
+ * Sent by the website for each page a visitor views. Answers 204 at once;
+ * the write happens in the background.
+ */
+export const trackPageView = (req, res) => {
+  const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 500) : '';
+  if (!path.startsWith('/')) {
+    return res.status(400).json({ success: false, message: 'path is required' });
+  }
+  const referrer = typeof req.body?.referrer === 'string' ? req.body.referrer.slice(0, 500) : null;
+
+  analyticsService.trackAnalyticsEvent(req, 'page_view', { path, referrer: referrer || null });
+  res.status(204).end();
+};
+
+/**
  * GET /analytics/global-reach
  * Get global reach statistics for admin dashboard
  * Query params: days (1-365, default 30)

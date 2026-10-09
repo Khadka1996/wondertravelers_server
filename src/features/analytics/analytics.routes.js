@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import * as analyticsController from './analytics.controller.js';
 import { authMiddleware } from '../auth/auth.middleware.js';
 import {
@@ -13,8 +14,12 @@ import {
 
 const router = express.Router();
 
+// Public: the website reports one event per page a visitor actually sees.
+const pageViewLimiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false });
+router.post('/page-view', pageViewLimiter, analyticsController.trackPageView);
+
 /**
- * All analytics routes require admin authentication
+ * All other analytics routes require admin authentication
  */
 router.use(authMiddleware.protect);
 router.use(authMiddleware.restrictTo('admin'));

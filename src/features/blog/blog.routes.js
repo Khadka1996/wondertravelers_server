@@ -253,7 +253,7 @@ router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, n
 // ==================== GENERIC BLOG ENDPOINTS ====================
 
 // Get a single blog by ID - Must come after all /:id/* routes
-router.get('/:id', getBlogById);
+router.get('/:id', (req, res, next) => authMiddleware.optional(req, res, next), getBlogById);
 
 // Update a blog (Admin or Super Admin) - with file upload support
 router.put('/:id', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, handleMulterError(upload.single('featuredImage')), updateBlog);
