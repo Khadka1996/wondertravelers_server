@@ -1,0 +1,33 @@
+[Unit]
+Description=Wonder Travelers API (Express)
+After=network-online.target mongod.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wondertravelers
+Group=wondertravelers
+WorkingDirectory=/srv/app/current/server
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=5000
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+# Sandbox: the app may only write inside /srv/app.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/app
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

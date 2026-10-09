@@ -414,7 +414,8 @@ export const authService = {
       // theft, so don't revoke every session - just tell it to retry.
       const rotatedRecently = user.refreshTokenRotatedAt
         && Date.now() - user.refreshTokenRotatedAt.getTime() < REFRESH_RACE_GRACE_MS;
-      if (!isValid && decoded.version === currentVersion - 1 && rotatedRecently) {
+      // user.refreshToken is null after a revocation: no race exception then.
+      if (!isValid && user.refreshToken && decoded.version === currentVersion - 1 && rotatedRecently) {
         const raceError = new Error('Session was just refreshed - retry');
         raceError.statusCode = 409;
         raceError.code = 'REFRESH_RACE';

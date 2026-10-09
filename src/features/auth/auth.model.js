@@ -3,6 +3,10 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
+// Refresh tokens are long random JWTs: a plain SHA-256 is the right hash.
+// (bcrypt truncates input at 72 bytes, which all of one user's tokens share.)
+const hashRefreshToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
 const { Schema } = mongoose;
 
 const UserSchema = new Schema(
@@ -427,6 +431,7 @@ UserSchema.methods.invalidateAllSessions = async function (invalidateDevices = f
   this.refreshToken = null;
   this.refreshTokenExpires = null;
   this.refreshTokenVersion = (this.refreshTokenVersion || 0) + 1;
+  this.refreshTokenRotatedAt = null;
   this.lastLogoutAt = new Date();
   
   if (invalidateDevices) {
@@ -440,8 +445,7 @@ UserSchema.methods.invalidateAllSessions = async function (invalidateDevices = f
 // `version` must be the version embedded in the token, so the next refresh's
 // version check matches. Use nextRefreshTokenVersion() to pick it.
 UserSchema.methods.setRefreshToken = async function (refreshToken, version, expiresInDays = 7) {
-  const salt = await bcrypt.genSalt(10);
-  this.refreshToken = await bcrypt.hash(refreshToken, salt);
+  this.refreshToken = hashRefreshToken(refreshToken);
   this.refreshTokenExpires = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
   this.refreshTokenVersion = version;
   this.refreshTokenRotatedAt = new Date();
@@ -462,8 +466,16 @@ UserSchema.methods.verifyRefreshToken = async function (refreshToken) {
     return false;
   }
   
-  // Verify bcrypt hash
-  return await bcrypt.compare(refreshToken, this.refreshToken);
+  // Hashes written before the SHA-256 switch are bcrypt ("$2..."). bcrypt only
+  // reads the first 72 bytes, which every refresh token of a user shares, so
+  // those still match any of the user's tokens; the version check covers them
+  // until the next rotation stores a SHA-256 hash.
+  if (this.refreshToken.startsWith('$2')) {
+    return await bcrypt.compare(refreshToken, this.refreshToken);
+  }
+  const expected = Buffer.from(this.refreshToken, 'hex');
+  const actual = Buffer.from(hashRefreshToken(refreshToken), 'hex');
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 };
 
 // Check if refresh token was revoked/expired

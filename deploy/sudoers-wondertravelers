@@ -1,0 +1,2 @@
+# Lets deploy.sh (run as wondertravelers) restart the two app services, nothing else.
+wondertravelers ALL=(root) NOPASSWD: /usr/bin/systemctl restart wondertravelers-api.service, /usr/bin/systemctl restart wondertravelers-web.service

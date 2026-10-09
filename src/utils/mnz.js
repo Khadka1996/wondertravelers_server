@@ -13,11 +13,13 @@ export const printBanner = () => {
 };
 
 export const startServer = (server, PORT, isProd, NODE_ENV) => {
-  server.listen(PORT, '0.0.0.0', () => {
+  // HOST=127.0.0.1 in production: only nginx (same machine) may reach the API.
+  const host = process.env.HOST || '0.0.0.0';
+  server.listen(PORT, host, () => {
     printBanner();
 
     logger.info(`🚀 Wondertravelers API is running`);
-    logger.info(`   Port:          ${PORT}`);
+    logger.info(`   Listening:     ${host}:${PORT}`);
     logger.info(`   Mode:          ${isProd ? 'Production 🔒' : 'Development 🛠️'}`);
     logger.info(`   Environment:   ${NODE_ENV}`);
     logger.info(`   Docs:          http://localhost:${PORT}/api-docs`);

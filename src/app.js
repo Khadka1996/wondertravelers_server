@@ -419,6 +419,7 @@ import destinationRoutes from './features/destination/destination.routes.js';
 import settingsRoutes from './features/settings/settings.routes.js';
 import advertisementRoutes from './features/advertisement/advertisement.routes.js';
 import activityRoutes from './features/activity/activity.routes.js';
+import sitemapRoutes from './features/sitemap/sitemap.routes.js';
 import { getNews } from './features/blog/blog.controller.js';
 
 // Import Blog Scheduler for auto-publishing scheduled blogs
@@ -526,6 +527,7 @@ app.use('/api/destinations', destinationRoutes);
 app.use('/api/advertisements', advertisementRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/sitemap', sitemapRoutes);
 
 // ========================
 // Initialize Blog Scheduler

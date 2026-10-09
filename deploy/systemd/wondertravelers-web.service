@@ -1,0 +1,31 @@
+[Unit]
+Description=Wonder Travelers website (Next.js)
+After=network-online.target wondertravelers-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wondertravelers
+Group=wondertravelers
+WorkingDirectory=/srv/app/current/client
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+
+# Sandbox: the app may only write inside /srv/app (Next writes its page cache in .next/).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/app
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
