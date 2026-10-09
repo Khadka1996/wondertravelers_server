@@ -292,7 +292,8 @@ const rateLimitSkipIps = new Set([
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProd ? 250 : 1000,
+  // One page view makes 10-15 API calls; RATE_LIMIT_MAX_REQUESTS tunes it.
+  max: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000,
   skip: (req) => rateLimitSkipIps.has(req.ip),
   message: { success: false, message: 'Too many requests' },
   standardHeaders: true,
