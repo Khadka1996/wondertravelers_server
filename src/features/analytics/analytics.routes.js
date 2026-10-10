@@ -29,6 +29,9 @@ router.use(authMiddleware.restrictTo('admin'));
  */
 router.use(analyticsRateLimiter);
 
+// Everything the admin analytics page shows, in one request (?days=30&refresh=1)
+router.get('/overview', analyticsController.getOverview);
+
 // Get global reach statistics
 router.get(
   '/global-reach',

@@ -1,5 +1,6 @@
 import * as analyticsService from './analytics.service.js';
 import { logger } from '../../utils/logger.util.js';
+import { getAnalyticsOverview } from './analytics-overview.service.js';
 
 /**
  * POST /analytics/page-view  { path, referrer }
@@ -334,5 +335,17 @@ export const getAnalyticsDebugStats = async (req, res) => {
       message: 'Failed to fetch analytics debug stats',
       error: error.message,
     });
+  }
+};
+
+/**
+ * GET /analytics/overview?days=30&refresh=1
+ */
+export const getOverview = async (req, res, next) => {
+  try {
+    const data = await getAnalyticsOverview(req.query.days, { refresh: req.query.refresh === '1' });
+    res.set('Cache-Control', 'private, max-age=60').json({ success: true, data });
+  } catch (err) {
+    next(err);
   }
 };
