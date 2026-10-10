@@ -32,6 +32,9 @@ router.use(analyticsRateLimiter);
 // Everything the admin analytics page shows, in one request (?days=30&refresh=1)
 router.get('/overview', analyticsController.getOverview);
 
+// Cloudflare traffic dashboard (?range=24h|7d|30d|90d|1y&refresh=1)
+router.get('/cloudflare', analyticsController.getCloudflare);
+
 // Get global reach statistics
 router.get(
   '/global-reach',

@@ -1,6 +1,7 @@
 import * as analyticsService from './analytics.service.js';
 import { logger } from '../../utils/logger.util.js';
 import { getAnalyticsOverview } from './analytics-overview.service.js';
+import { getCloudflareAnalytics } from './cloudflare-analytics.service.js';
 
 /**
  * POST /analytics/page-view  { path, referrer }
@@ -347,5 +348,18 @@ export const getOverview = async (req, res, next) => {
     res.set('Cache-Control', 'private, max-age=60').json({ success: true, data });
   } catch (err) {
     next(err);
+  }
+};
+
+/**
+ * GET /analytics/cloudflare?range=7d&refresh=1
+ */
+export const getCloudflare = async (req, res, next) => {
+  try {
+    const data = await getCloudflareAnalytics(String(req.query.range || '7d'), { refresh: req.query.refresh === '1' });
+    res.set('Cache-Control', 'private, max-age=60').json({ success: true, data });
+  } catch (err) {
+    logger.warn('Cloudflare analytics failed', { error: err.message });
+    res.status(502).json({ success: false, message: `Cloudflare: ${err.message}` });
   }
 };
