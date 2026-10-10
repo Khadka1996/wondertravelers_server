@@ -160,7 +160,47 @@ async function cloudflareStats(days) {
     totals,
     daily,
     countries: [...countries.values()].sort((a, b) => b.requests - a.requests),
+    topPages: await cloudflareTopPages(token, zone, Math.min(days, 7)).catch((e) => {
+      logger.warn('Cloudflare top pages failed', { error: e.message });
+      return [];
+    }),
   };
+}
+
+/**
+ * Most-requested HTML pages on www from real browsers. The free plan keeps
+ * this detail for about a week. /en/x, /ne/x and the old unprefixed /x are
+ * merged into one page.
+ */
+async function cloudflareTopPages(token, zone, days) {
+  const query = `query ($zone: String!, $since: Time!) {
+    viewer { zones(filter: { zoneTag: $zone }) {
+      httpRequestsAdaptiveGroups(limit: 100, orderBy: [count_DESC], filter: {
+        datetime_geq: $since, requestSource: "eyeball",
+        clientRequestHTTPHost: "www.wondertravelers.com", edgeResponseContentTypeName: "html"
+      }) { count dimensions { clientRequestPath } }
+    } }
+  }`;
+  const since = new Date(Date.now() - days * DAY_MS).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const response = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables: { zone, since } }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const body = await response.json();
+  if (!response.ok || body.errors?.length) throw new Error(body.errors?.[0]?.message || `Cloudflare API ${response.status}`);
+
+  const pages = new Map();
+  for (const row of body.data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups || []) {
+    const raw = row.dimensions.clientRequestPath || '/';
+    if (raw.startsWith('/cdn-cgi') || raw.startsWith('/_next') || raw.startsWith('/api') || raw.startsWith('/admin') || raw.startsWith('/auth')) continue;
+    const path = raw.replace(/^\/(en|ne)(?=\/|$)/, '') || '/';
+    const entry = pages.get(path) || { path, views: 0 };
+    entry.views += row.count;
+    pages.set(path, entry);
+  }
+  return [...pages.values()].sort((a, b) => b.views - a.views).slice(0, 10).map((p) => ({ ...p, days }));
 }
 
 // -------------------------------------------------------------------- Google
