@@ -46,6 +46,7 @@ import { authMiddleware } from '../auth/auth.middleware.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { saveImageBuffer } from '../../utils/inline-images.util.js';
 
 const router = express.Router();
 
@@ -248,6 +249,20 @@ router.get('/:id/engagement', getBlogEngagement);
 router.get('/:id/similar', getSimilarBlogs);
 
 // Upload blog image
+// Editor image: the rich-text editor uploads each picture here as soon as it
+// is inserted, so articles carry URLs instead of megabytes of base64.
+router.post('/images', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, handleMulterError(upload.single('image')), async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, error: 'No image uploaded' });
+  try {
+    const url = await saveImageBuffer(await fs.promises.readFile(req.file.path), 'blogs');
+    res.status(201).json({ success: true, url });
+  } catch (err) {
+    res.status(400).json({ success: false, error: 'Could not process this image' });
+  } finally {
+    fs.promises.unlink(req.file.path).catch(() => {});
+  }
+});
+
 router.post('/:id/image', (req, res, next) => authMiddleware.protect(req, res, next), requireBlogManager, handleMulterError(upload.single('image')), uploadBlogImage);
 
 // ==================== GENERIC BLOG ENDPOINTS ====================

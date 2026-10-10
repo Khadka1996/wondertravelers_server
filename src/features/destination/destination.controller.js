@@ -6,6 +6,9 @@ import { replaceInlineImages, resolveImageObjects } from '../../utils/inline-ima
 const CACHE_TTL = 3600; // 1 hour for destinations
 const FEATURED_CACHE_TTL = 7200; // 2 hours for featured
 
+// Any change to a destination must show on the site at once, not after the TTL.
+const invalidateDestinationCache = () => cache.delPattern('destinations:*');
+
 const normalizeSort = (sortValue) => {
   switch (sortValue) {
     case 'featured':
@@ -44,7 +47,7 @@ export const getDestinations = async (req, res) => {
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
       return res
-        .set('Cache-Control', 'public, max-age=300')
+        .set('Cache-Control', 'public, max-age=60')
         .set('Pragma', 'public')
         .set('Expires', new Date(Date.now() + 300000).toUTCString())
         .set('X-Cache', 'HIT')
@@ -106,7 +109,7 @@ export const getDestinations = async (req, res) => {
     await cache.set(cacheKey, result, CACHE_TTL);
 
     res
-      .set('Cache-Control', 'public, max-age=300')
+      .set('Cache-Control', 'public, max-age=60')
       .set('Pragma', 'public')
       .set('Expires', new Date(Date.now() + 300000).toUTCString())
       .set('X-Cache', 'MISS')
@@ -129,7 +132,7 @@ export const getFeaturedDestinations = async (req, res) => {
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
       return res
-        .set('Cache-Control', 'public, max-age=600')
+        .set('Cache-Control', 'public, max-age=60')
         .set('Pragma', 'public')
         .set('Expires', new Date(Date.now() + 600000).toUTCString())
         .set('X-Cache', 'HIT')
@@ -154,7 +157,7 @@ export const getFeaturedDestinations = async (req, res) => {
     await cache.set(cacheKey, result, FEATURED_CACHE_TTL);
 
     res
-      .set('Cache-Control', 'public, max-age=600')
+      .set('Cache-Control', 'public, max-age=60')
       .set('Pragma', 'public')
       .set('Expires', new Date(Date.now() + 600000).toUTCString())
       .set('X-Cache', 'MISS')
@@ -378,6 +381,8 @@ export const createDestination = async (req, res) => {
 
     logger.info('Destination created', { destId: destination._id, slug: destination.slug });
 
+    await invalidateDestinationCache();
+
     res.status(201).json({
       success: true,
       message: 'Destination created successfully',
@@ -436,6 +441,8 @@ export const updateDestination = async (req, res) => {
 
     logger.info('Destination updated', { destId: destination._id });
 
+    await invalidateDestinationCache();
+
     res.json({
       success: true,
       message: 'Destination updated successfully',
@@ -471,6 +478,8 @@ export const deleteDestination = async (req, res) => {
     await cache.del('destinations:categories');
 
     logger.info('Destination deleted', { destId: id });
+
+    await invalidateDestinationCache();
 
     res.json({
       success: true,

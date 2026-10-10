@@ -104,6 +104,11 @@ log "Installing API packages"
 
 log "Building website"
 (cd "$RELEASE/client" && npm ci --no-audit --no-fund --loglevel=error && NEXT_TELEMETRY_DISABLED=1 npm run build)
+# Resized images survive deploys instead of being re-made after each one
+# (linked after the build, which clears .next).
+mkdir -p "$SHARED/next-image-cache" "$RELEASE/client/.next/cache"
+rm -rf "$RELEASE/client/.next/cache/images"
+ln -s "$SHARED/next-image-cache" "$RELEASE/client/.next/cache/images"
 
 log "Running database migrations"
 touch "$SHARED/migrations.done"

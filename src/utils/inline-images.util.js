@@ -23,7 +23,11 @@ export const isDataUrlImage = (value) => typeof value === 'string' && DATA_URL_P
  */
 export async function saveDataUrlImage(dataUrl, folder) {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1).replace(/\s/g, '');
-  const input = Buffer.from(base64, 'base64');
+  return saveImageBuffer(Buffer.from(base64, 'base64'), folder);
+}
+
+/** Saves image bytes as uploads/<folder>/inline-<hash>.webp (max 1920px wide) and returns its URL. */
+export async function saveImageBuffer(input, folder) {
   const hash = crypto.createHash('sha1').update(input).digest('hex').slice(0, 20);
   const fileName = `inline-${hash}.webp`;
   const targetDir = path.join(UPLOADS_ROOT, folder);
