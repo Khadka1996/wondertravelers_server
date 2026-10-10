@@ -14,7 +14,7 @@ export const trackPageView = (req, res) => {
   }
   const referrer = typeof req.body?.referrer === 'string' ? req.body.referrer.slice(0, 500) : null;
 
-  analyticsService.trackAnalyticsEvent(req, 'page_view', { path, referrer: referrer || null });
+  analyticsService.trackAnalyticsEvent(req, 'site_view', { path, referrer: referrer || null });
   res.status(204).end();
 };
 

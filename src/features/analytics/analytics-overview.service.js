@@ -11,15 +11,16 @@ import cache from '../../utils/cache.util.js';
 import { logger } from '../../utils/logger.util.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Only real pages: the site reports /en/... and /ne/... page views.
-const PAGE_PATH = /^\/(en|ne)(\/|$)/;
+// Only pages visitors actually saw (reported by the website), served by the
+// { type, timestamp } index; old API-call rows have another type.
+const SITE_VIEW = 'site_view';
 
 const clampDays = (days) => Math.min(365, Math.max(1, Number.parseInt(days, 10) || 30));
 const isoDate = (date) => date.toISOString().slice(0, 10);
 
 /** Our own page views for [since, until). */
 async function siteStats(since, until) {
-  const match = { type: 'page_view', timestamp: { $gte: since, $lt: until }, path: PAGE_PATH };
+  const match = { type: SITE_VIEW, timestamp: { $gte: since, $lt: until } };
   // Visitor = anonymised IP + browser; good enough without cookies.
   const visitor = { $concat: [{ $ifNull: ['$ipAddress', ''] }, '|', { $ifNull: ['$userAgent', ''] }] };
   const pagePath = {

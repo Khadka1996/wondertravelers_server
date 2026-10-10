@@ -4,7 +4,9 @@ const analyticsSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ['page_view', 'product_view', 'auction_view', 'order', 'user_signup'],
+      // site_view: a page a visitor saw (reported by the website). page_view
+      // rows are from the old tracker, which logged every API call.
+      enum: ['site_view', 'page_view', 'product_view', 'auction_view', 'order', 'user_signup'],
       required: true,
     },
     userId: {
